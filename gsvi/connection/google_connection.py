@@ -17,16 +17,18 @@ class GoogleConnection:
     def __init__(self, timeout=5.0):
         self.timeout = timeout
         self.hl = 'en-US'
-        response = requests.get(self.URL_BASE, timeout=self.timeout)
+        self.session = requests.Session()
+        response = self.session.get(self.URL_BASE, timeout=self.timeout)
 
         if response.status_code is not 200:
             raise requests.exceptions.RequestException(
                 'Failed to fetch cookies: <{0} [{1}]>'.format(response.reason, str(response.status_code))
             )
 
-        self.cookies = response.cookies
+    def __del__(self):
+        self.session.close()
 
-    def __get_explore(self, session: requests.Session, keywords: List[str], ranges: List[Tuple[datetime.datetime]],
+    def __get_explore(self, keywords: List[str], ranges: List[Tuple[datetime.datetime]],
                       geos: List[str], granularity: str) -> dict:
         # transform the datetime interval into the correct string for the requested granularity
         ranges_str = [' '.join(
@@ -48,7 +50,7 @@ class GoogleConnection:
             })
         }
 
-        response = session.get(self.URL_EXPLORE, params=params)
+        response = self.session.get(self.URL_EXPLORE, params=params, timeout=self.timeout)
         if response.status_code is not 200:
             raise requests.exceptions.RequestException(
                 'Failed to explore: <{0} [{1}]>'.format(response.reason, str(response.status_code))
@@ -61,7 +63,7 @@ class GoogleConnection:
         } for widget in content_raw}
         return content_dict
 
-    def __get_timeseries(self, session: requests.Session, payload: dict,
+    def __get_timeseries(self, payload: dict,
                          keyword_num: int, ts_api='SINGLE') -> List[pd.Series]:
         params = {
             'hl': self.hl,
@@ -70,7 +72,7 @@ class GoogleConnection:
             'token': payload['token']
         }
 
-        response = session.get(self.URL_TS[ts_api], params=params)
+        response = self.session.get(self.URL_TS[ts_api], params=params, timeout=self.timeout)
         if response.status_code is not 200:
             raise requests.exceptions.RequestException(
                 'Failed to explore: <{0} [{1}]>'.format(response.reason, str(response.status_code))
@@ -99,10 +101,8 @@ class GoogleConnection:
 
     def get_timeseries(self, keywords: List[str], ranges: List[Tuple[datetime.datetime]],
                        geos: List[str], granularity='DAY') -> List[pd.Series]:
-        with requests.session() as s:
-            s.cookies = self.cookies
-            widgets = self.__get_explore(session=s, keywords=keywords, ranges=ranges,
-                                         geos=geos, granularity=granularity)
-            ts = self.__get_timeseries(session=s, payload=widgets['TIMESERIES'], keyword_num=len(keywords),
-                                       ts_api='SINGLE' if len(keywords) == 1 else 'MULTI')
+        widgets = self.__get_explore(keywords=keywords, ranges=ranges,
+                                     geos=geos, granularity=granularity)
+        ts = self.__get_timeseries(payload=widgets['TIMESERIES'], keyword_num=len(keywords),
+                                   ts_api='SINGLE' if len(keywords) == 1 else 'MULTI')
         return ts
