@@ -28,8 +28,8 @@ class GoogleConnection:
     def __del__(self):
         self.session.close()
 
-    def __get_explore(self, keywords: List[str], ranges: List[Tuple[datetime.datetime]],
-                      geos: List[str], granularity: str) -> dict:
+    def _get_explore(self, keywords: List[str], ranges: List[Tuple[datetime.datetime]],
+                     geos: List[str], granularity: str) -> dict:
         # transform the datetime interval into the correct string for the requested granularity
         ranges_str = [' '.join(
             [d.strftime('%Y-%m-%d') if granularity == 'DAY' else d.strftime('%Y-%m-%dT%H') for d in dates]
@@ -63,8 +63,8 @@ class GoogleConnection:
         } for widget in content_raw}
         return content_dict
 
-    def __get_timeseries(self, payload: dict,
-                         keyword_num: int, ts_api='SINGLE') -> List[pd.Series]:
+    def _get_timeseries(self, payload: dict,
+                        keyword_num: int, ts_api='SINGLE') -> List[pd.Series]:
         params = {
             'hl': self.hl,
             'tz': 360,
@@ -99,10 +99,10 @@ class GoogleConnection:
 
         return content_parsed
 
-    def get_timeseries(self, keywords: List[str], ranges: List[Tuple[datetime.datetime]],
+    def get_timeseries(self, keywords: List[str], ranges: List[Tuple[datetime.datetime, datetime.datetime]],
                        geos: List[str], granularity='DAY') -> List[pd.Series]:
-        widgets = self.__get_explore(keywords=keywords, ranges=ranges,
-                                     geos=geos, granularity=granularity)
-        ts = self.__get_timeseries(payload=widgets['TIMESERIES'], keyword_num=len(keywords),
-                                   ts_api='SINGLE' if len(keywords) == 1 else 'MULTI')
+        widgets = self._get_explore(keywords=keywords, ranges=ranges,
+                                    geos=geos, granularity=granularity)
+        ts = self._get_timeseries(payload=widgets['TIMESERIES'], keyword_num=len(keywords),
+                                  ts_api='SINGLE' if len(keywords) == 1 else 'MULTI')
         return ts
