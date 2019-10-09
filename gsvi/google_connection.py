@@ -1,6 +1,6 @@
 import json
 import datetime
-from typing import List, Tuple
+from typing import Dict, List, Tuple, Union
 
 import requests
 import pandas as pd
@@ -28,7 +28,7 @@ class GoogleConnection:
     def __del__(self):
         self.session.close()
 
-    def _get_explore(self, keywords: List[str], ranges: List[Tuple[datetime.datetime]],
+    def _get_explore(self, keywords: List[str], ranges: List[Tuple[datetime.datetime, datetime.datetime]],
                      geos: List[str], granularity: str) -> dict:
         # transform the datetime interval into the correct string for the requested granularity
         ranges_str = [' '.join(
@@ -99,8 +99,16 @@ class GoogleConnection:
 
         return content_parsed
 
-    def get_timeseries(self, keywords: List[str], ranges: List[Tuple[datetime.datetime, datetime.datetime]],
-                       geos: List[str], granularity='DAY') -> List[pd.Series]:
+    def get_timeseries(self, queries: Dict[str, Dict[str, Union[str, Tuple[datetime.datetime, datetime.datetime]]]],
+                       granularity='DAY') -> List[pd.Series]:
+        keywords = []
+        ranges = []
+        geos = []
+        for key in queries:
+            keywords.append(key)
+            ranges.append(queries[key]['ranges'])
+            geos.append(queries[key]['geos'])
+
         widgets = self._get_explore(keywords=keywords, ranges=ranges,
                                     geos=geos, granularity=granularity)
         ts = self._get_timeseries(payload=widgets['TIMESERIES'], keyword_num=len(keywords),
