@@ -6,7 +6,19 @@ import requests
 import pandas as pd
 
 
-class GoogleConnection:
+class GoogleConnection(object):
+    """ Connection to Google Trends.
+
+    Offers the interface to Google Trends. For now, this is limited
+    to the time series widget but can be easily extended.
+    Example:
+         gc = GoogleConnection()
+         ts = gc.get_timeseries(...)
+
+    Attributes:
+        timeout: The timeout for the GET-requests.
+
+    """
     URL_BASE = 'https://trends.google.com/'
     URL_EXPLORE = 'https://trends.google.com/trends/api/explore'
     URL_TS = {
@@ -30,7 +42,9 @@ class GoogleConnection:
 
     def _get_explore(self, keywords: List[str], ranges: List[Tuple[datetime.datetime, datetime.datetime]],
                      geos: List[str], granularity: str) -> dict:
-        # transform the datetime interval into the correct string for the requested granularity
+        """ Makes a request to Google Trends Explore API to get the right payloads and tokens for the widgets. """
+
+        # Transforms the datetime interval into the correct string for the requested granularity
         ranges_str = [' '.join(
             [d.strftime('%Y-%m-%d') if granularity == 'DAY' else d.strftime('%Y-%m-%dT%H') for d in dates]
         ) for dates in ranges]
@@ -65,6 +79,10 @@ class GoogleConnection:
 
     def _get_timeseries(self, payload: dict,
                         keyword_num: int, ts_api='SINGLE') -> List[pd.Series]:
+        """
+        Makes the request to the TIMESERIES widget by using the payload,
+        token obtained by _get_explore() and parses the json into pd.Series
+        """
         params = {
             'hl': self.hl,
             'tz': 360,
@@ -99,15 +117,31 @@ class GoogleConnection:
 
         return content_parsed
 
-    def get_timeseries(self, queries: Dict[str, Dict[str, Union[str, Tuple[datetime.datetime, datetime.datetime]]]],
+    def get_timeseries(self, queries: List[Dict[str, Union[str, Tuple[datetime.datetime, datetime.datetime]]]],
                        granularity='DAY') -> List[pd.Series]:
+        """
+        Makes the request to Google Trends for the specified queries. A maximum of 5 queries is supported.
+        Args:
+            queries: The queries as a list of dicts with ranges as tuples of datetime objects. Example:
+                [{'key': 'apple', 'geo': 'US', 'range': (start, end)},
+                 {'key': 'orange', 'geo': 'US', 'range': (start, end)},
+                ]
+            granularity: The step length of the requested series, either 'DAY' or 'HOUR'
+        Returns:
+            A list of pd.Series, one series for each query.
+            The values are normalized over the maximal value (which is set to 100) over all queries by Trends.
+        """
+
+        if len(queries) > 5:
+            raise ValueError('Google Trends supports no more than 5 queries per request.')
+
         keywords = []
         ranges = []
         geos = []
-        for key in queries:
-            keywords.append(key)
-            ranges.append(queries[key]['ranges'])
-            geos.append(queries[key]['geos'])
+        for query in queries:
+            keywords.append(query['key'])
+            ranges.append(query['range'])
+            geos.append(query['geo'].upper())
 
         widgets = self._get_explore(keywords=keywords, ranges=ranges,
                                     geos=geos, granularity=granularity)
