@@ -115,7 +115,18 @@ class TSCrossSectional(BaseStructure):
         super().__init__(connection, query, start, end, granularity=granularity, delay=delay)
 
     def get_data(self) -> pd.DataFrame:
-        pass
+        # TODO: think about request structure for cross-sectional
+        for i in range(len(self.queries)):
+            requests = list()
+            requests.append([{**self.queries[i], **{'range': interval}} for interval in super()._build_intervals()])
+            depth = math.ceil(math.log(math.ceil(len(requests[0]) / 5), 5)) + 1
+            for j in range(0, depth):
+                layer = []
+                for l in range(0, len(requests[j]), 5):
+                    layer.append(super()._get_max_request(requests[j][l:l + 5]))
+                    # random delay between requests -> delay +/- 25%
+                    time.sleep(self.delay + random.uniform(-self.delay * 0.25, self.delay * 0.25))
+                requests.append(layer)
 
 
 if __name__ == '__main__':
