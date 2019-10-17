@@ -11,12 +11,17 @@ from gsvi.google_connection import GoogleConnection
 
 
 class SVSeries(object):
+    """ Container for uni- or multivariate google search volume time series.
+
+    The main purpose of this class is to get arbitrary-length time series
+    data from Google Trends for one or more keywords.
+
+    """
     MAX_FRGMNTS = 5
     GRANULARITIES = ['DAY', 'HOUR']
 
     def __init__(self, connection: GoogleConnection, queries: List[Dict[str, str]],
                  range: Tuple[datetime.datetime, datetime.datetime], granularity='DAY', delay=10):
-
         self.connection = connection
         self.delay = delay
         self.is_consistent = False
@@ -59,7 +64,6 @@ class SVSeries(object):
             raise ValueError('Earliest date is 2004/01/01!')
         self.is_consistent = False
         self._range = range
-
 
     @granularity.setter
     def granularity(self, granularity: str):
@@ -170,6 +174,6 @@ if __name__ == '__main__':
     start = datetime.datetime(year=2017, month=1, day=1)
     end = datetime.datetime(year=2019, month=9, day=30)
     ts = SVSeries.multivariate(gc, [{'key': 'apple', 'geo': 'US'}, {'key': 'microsoft', 'geo': 'US'}],
-                             start, end, 'DAY')
+                               start, end, 'DAY')
     res = ts.get_data()
     print(ts)

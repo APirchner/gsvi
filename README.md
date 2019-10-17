@@ -42,7 +42,7 @@ U.S from 2014-09-13 to 2019-06-13:
 import datetime as dt
 
 from gsvi.google_connection import GoogleConnection
-from gsvi.request_structures import TSUnivariate
+from gsvi.request_structures import SVSeries
 
 # series start and end
 start = dt.datetime(year=2014, month=9, day=13)
@@ -50,9 +50,10 @@ end = dt.datetime(year=2019, month=6, day=13)
 
 # make connection to Google Trends and inject connection into the request structure
 connection = GoogleConnection()
-series = TSUnivariate(connection=connection, query={'key': 'apple', 'geo': 'US'},
-                  start=start, end=end, granularity='DAY'
-                  )
+series = SVSeries.univariate(connection=connection,
+                             query={'key': 'apple', 'geo': 'US'},
+                             start=start, end=end, granularity='DAY'
+                             )
 ts = series.get_data()
 ```
 

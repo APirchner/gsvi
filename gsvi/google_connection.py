@@ -10,7 +10,7 @@ class GoogleConnection(object):
     """ Connection to Google Trends.
 
     Offers the interface to Google Trends. For now, this is limited
-    to the time series widget but can be easily extended.
+    to the time series widget but can be extended easily.
     Example:
          gc = GoogleConnection()
          ts = gc.get_timeseries(...)
@@ -120,12 +120,13 @@ class GoogleConnection(object):
     def get_timeseries(self, queries: List[Dict[str, Union[str, Tuple[datetime.datetime, datetime.datetime]]]],
                        granularity='DAY') -> List[pd.Series]:
         """
-        Makes the request to Google Trends for the specified queries. A maximum of 5 queries is supported.
+        Makes the request to Google Trends for the specified queries.
+        A maximum of 5 queries is supported.
         Args:
-            queries: The queries as a list of dicts with ranges as tuples of datetime objects. Example:
-                [{'key': 'apple', 'geo': 'US', 'range': (start, end)},
-                 {'key': 'orange', 'geo': 'US', 'range': (start, end)},
-                ]
+            queries: The queries as a list of dicts with ranges as
+                     tuples of datetime objects. Example:
+                         [{'key': 'apple', 'geo': 'US', 'range': (start, end)},
+                          {'key': 'orange', 'geo': 'US', 'range': (start, end)}]
             granularity: The step length of the requested series, either 'DAY' or 'HOUR'
         Returns:
             A list of pd.Series, one series for each query.
