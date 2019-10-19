@@ -1,3 +1,11 @@
+""" Holds GoogleConnection class.
+
+This module provides the interface to Google Trends via the GoogleConnection class.
+For now, it only interacts with GT's time series widget via the get_timeseries() method.
+Example usage:
+    gc = GoogleConnection()
+    ts = gc.get_timeseries(...)
+"""
 import json
 import datetime
 from typing import Dict, List, Tuple, Union
@@ -6,12 +14,12 @@ import requests
 import pandas as pd
 
 
-class GoogleConnection(object):
+class GoogleConnection:
     """ Connection to Google Trends.
 
     Offers the interface to Google Trends. For now, this is limited
     to the time series widget but can be extended easily.
-    Example:
+    Usage:
          gc = GoogleConnection()
          ts = gc.get_timeseries(...)
 
@@ -28,29 +36,37 @@ class GoogleConnection(object):
 
     def __init__(self, timeout=5.0):
         self.timeout = timeout
-        self.hl = 'en-US'
+        self.language = 'en-US'
         self.session = requests.Session()
         response = self.session.get(self.URL_BASE, timeout=self.timeout)
 
-        if response.status_code is not 200:
+        if response.status_code is not requests.codes['ok']:
             raise requests.exceptions.RequestException(
-                'Failed to fetch cookies: <{0} [{1}]>'.format(response.reason, str(response.status_code))
+                'Failed to fetch cookies: <{0} [{1}]>'.format(
+                    response.reason, str(response.status_code))
             )
 
     def __del__(self):
         self.session.close()
 
-    def _get_explore(self, keywords: List[str], ranges: List[Tuple[datetime.datetime, datetime.datetime]],
+    def __repr__(self):
+        return self.session.headers
+
+    def __str__(self):
+        return json.dumps(self.session.headers, indent=4, sort_keys=True, default=str)
+
+    def _get_explore(self, keywords: List[str],
+                     ranges: List[Tuple[datetime.datetime, datetime.datetime]],
                      geos: List[str], granularity: str) -> dict:
-        """ Makes a request to Google Trends Explore API to get the right payloads and tokens for the widgets. """
+        """ Makes a request to GT Explore API to get payloads and tokens for the widgets. """
 
         # Transforms the datetime interval into the correct string for the requested granularity
         ranges_str = [' '.join(
-            [d.strftime('%Y-%m-%d') if granularity == 'DAY' else d.strftime('%Y-%m-%dT%H') for d in dates]
-        ) for dates in ranges]
+            [d.strftime('%Y-%m-%d') if granularity == 'DAY' \
+                 else d.strftime('%Y-%m-%dT%H') for d in dates]) for dates in ranges]
 
         params = {
-            'hl': self.hl,
+            'hl': self.language,
             'tz': 360,
             'req': json.dumps({
                 'comparisonItem':
@@ -65,7 +81,7 @@ class GoogleConnection(object):
         }
 
         response = self.session.get(self.URL_EXPLORE, params=params, timeout=self.timeout)
-        if response.status_code is not 200:
+        if response.status_code is not requests.codes['ok']:
             raise requests.exceptions.RequestException(
                 'Failed to explore: <{0} [{1}]>'.format(response.reason, str(response.status_code))
             )
@@ -84,14 +100,14 @@ class GoogleConnection(object):
         token obtained by _get_explore() and parses the json into pd.Series
         """
         params = {
-            'hl': self.hl,
+            'hl': self.language,
             'tz': 360,
             'req': json.dumps(payload['req']),
             'token': payload['token']
         }
 
         response = self.session.get(self.URL_TS[ts_api], params=params, timeout=self.timeout)
-        if response.status_code is not 200:
+        if response.status_code is not requests.codes['ok']:
             raise requests.exceptions.RequestException(
                 'Failed to explore: <{0} [{1}]>'.format(response.reason, str(response.status_code))
             )
@@ -100,25 +116,21 @@ class GoogleConnection(object):
         if ts_api == 'MULTI':
             # rows iterate faster than columns to get lists of columns
             content_parsed = [
-                pd.Series(
-                    dict([(
-                        datetime.datetime.fromtimestamp(int(row['columnData'][i]['time'])),
-                        row['columnData'][i]['value']) for row in content_raw]
-                    )
-                ) for i in range(keyword_num)
+                pd.Series({datetime.datetime.fromtimestamp(int(row['columnData'][i]['time'])):
+                               row['columnData'][i]['value']
+                           for row in content_raw}) for i in range(keyword_num)
             ]
         else:
             content_parsed = [
-                pd.Series(
-                    dict([(
-                        datetime.datetime.fromtimestamp(int(row['time'])), row['value'][0]
-                    ) for row in content_raw]))
+                pd.Series({datetime.datetime.fromtimestamp(int(row['time'])):
+                               row['value'][0]
+                           for row in content_raw})
             ]
-
         return content_parsed
 
-    def get_timeseries(self, queries: List[Dict[str, Union[str, Tuple[datetime.datetime, datetime.datetime]]]],
-                       granularity='DAY') -> List[pd.Series]:
+    def get_timeseries(
+            self, queries: List[Dict[str, Union[str, Tuple[datetime.datetime, datetime.datetime]]]],
+            granularity='DAY') -> List[pd.Series]:
         """
         Makes the request to Google Trends for the specified queries.
         A maximum of 5 queries is supported.
@@ -130,12 +142,9 @@ class GoogleConnection(object):
             granularity: The step length of the requested series, either 'DAY' or 'HOUR'
         Returns:
             A list of pd.Series, one series for each query.
-            The values are normalized over the maximal value (which is set to 100) over all queries by Trends.
+            The values are normalized over the maximal value
+            (which is set to 100) over all queries by Trends.
         """
-
-        if len(queries) > 5:
-            raise ValueError('Google Trends supports no more than 5 queries per request.')
-
         keywords = []
         ranges = []
         geos = []
@@ -146,6 +155,6 @@ class GoogleConnection(object):
 
         widgets = self._get_explore(keywords=keywords, ranges=ranges,
                                     geos=geos, granularity=granularity)
-        ts = self._get_timeseries(payload=widgets['TIMESERIES'], keyword_num=len(keywords),
-                                  ts_api='SINGLE' if len(keywords) == 1 else 'MULTI')
-        return ts
+        series = self._get_timeseries(payload=widgets['TIMESERIES'], keyword_num=len(keywords),
+                                      ts_api='SINGLE' if len(keywords) == 1 else 'MULTI')
+        return series
