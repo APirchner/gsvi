@@ -3,9 +3,11 @@
 This module provides the interface to Google Trends via the GoogleConnection class.
 For now, it only interacts with GT's time series widget via the get_timeseries() method.
 Example usage:
+    queries = [{...}]
     gc = GoogleConnection()
-    ts = gc.get_timeseries(...)
+    ts = gc.get_timeseries(queries)
 """
+
 import json
 import datetime
 from typing import Dict, List, Tuple, Union
@@ -20,12 +22,14 @@ class GoogleConnection:
     Offers the interface to Google Trends. For now, this is limited
     to the time series widget but can be extended easily.
     Usage:
-         gc = GoogleConnection()
-         ts = gc.get_timeseries(...)
+        queries = [{...}]
+        gc = GoogleConnection()
+        ts = gc.get_timeseries(queries)
 
     Attributes:
         timeout: The timeout for the GET-requests.
-
+    Raises:
+        requests.exceptions.RequestException
     """
     URL_BASE = 'https://trends.google.com/'
     URL_EXPLORE = 'https://trends.google.com/trends/api/explore'
@@ -38,13 +42,17 @@ class GoogleConnection:
         self.timeout = timeout
         self.language = 'en-US'
         self.session = requests.Session()
-        response = self.session.get(self.URL_BASE, timeout=self.timeout)
-
-        if response.status_code is not requests.codes['ok']:
-            raise requests.exceptions.RequestException(
-                'Failed to fetch cookies: <{0} [{1}]>'.format(
-                    response.reason, str(response.status_code))
-            )
+        try:
+            response = self.session.get(self.URL_BASE, timeout=self.timeout)
+            response.raise_for_status()
+        except requests.exceptions.HTTPError as err:
+            raise requests.exceptions.RequestException(err)
+        except requests.exceptions.ConnectionError as err:
+            raise requests.exceptions.RequestException(err)
+        except requests.exceptions.Timeout as err:
+            raise requests.exceptions.RequestException(err)
+        except requests.exceptions.RequestException as err:
+            raise requests.exceptions.RequestException(err)
 
     def __del__(self):
         self.session.close()
@@ -81,10 +89,7 @@ class GoogleConnection:
         }
 
         response = self.session.get(self.URL_EXPLORE, params=params, timeout=self.timeout)
-        if response.status_code is not requests.codes['ok']:
-            raise requests.exceptions.RequestException(
-                'Failed to explore: <{0} [{1}]>'.format(response.reason, str(response.status_code))
-            )
+        response.raise_for_status()
         # explore API has 5 leading garbage bytes
         content_raw = json.loads(response.content[5:])['widgets']
         content_dict = {widget['id']: {
@@ -107,10 +112,7 @@ class GoogleConnection:
         }
 
         response = self.session.get(self.URL_TS[ts_api], params=params, timeout=self.timeout)
-        if response.status_code is not requests.codes['ok']:
-            raise requests.exceptions.RequestException(
-                'Failed to explore: <{0} [{1}]>'.format(response.reason, str(response.status_code))
-            )
+        response.raise_for_status()
         content_raw = json.loads(response.content[5:])['default']['timelineData']
 
         if ts_api == 'MULTI':
@@ -144,6 +146,8 @@ class GoogleConnection:
             A list of pd.Series, one series for each query.
             The values are normalized over the maximal value
             (which is set to 100) over all queries by Trends.
+        Raises:
+            requests.exceptions.RequestException
         """
         keywords = []
         ranges = []
@@ -153,8 +157,17 @@ class GoogleConnection:
             ranges.append(query['range'])
             geos.append(query['geo'].upper())
 
-        widgets = self._get_explore(keywords=keywords, ranges=ranges,
-                                    geos=geos, granularity=granularity)
-        series = self._get_timeseries(payload=widgets['TIMESERIES'], keyword_num=len(keywords),
-                                      ts_api='SINGLE' if len(keywords) == 1 else 'MULTI')
+        try:
+            widgets = self._get_explore(keywords=keywords, ranges=ranges,
+                                        geos=geos, granularity=granularity)
+            series = self._get_timeseries(payload=widgets['TIMESERIES'], keyword_num=len(keywords),
+                                          ts_api='SINGLE' if len(keywords) == 1 else 'MULTI')
+        except requests.exceptions.HTTPError as err:
+            raise requests.exceptions.RequestException(err)
+        except requests.exceptions.ConnectionError as err:
+            raise requests.exceptions.RequestException(err)
+        except requests.exceptions.Timeout as err:
+            raise requests.exceptions.RequestException(err)
+        except requests.exceptions.RequestException as err:
+            raise requests.exceptions.RequestException(err)
         return series
