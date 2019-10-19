@@ -125,8 +125,8 @@ class GoogleConnection:
         else:
             content_parsed = [
                 pd.Series({datetime.datetime.fromtimestamp(int(row['time'])):
-                               row['value'][0]
-                           for row in content_raw})
+                               row['value'][i]
+                           for row in content_raw}) for i in range(keyword_num)
             ]
         return content_parsed
 
@@ -147,8 +147,12 @@ class GoogleConnection:
             The values are normalized over the maximal value
             (which is set to 100) over all queries by Trends.
         Raises:
+            ValueError
             requests.exceptions.RequestException
         """
+        if len(queries) > 5:
+            raise ValueError('Too many ({0} > 5) queries!'.format(len(queries)))
+
         keywords = []
         ranges = []
         geos = []
@@ -157,11 +161,21 @@ class GoogleConnection:
             ranges.append(query['range'])
             geos.append(query['geo'].upper())
 
+        # assign query to its GT API url
+        if len(ranges) == 1:
+            ts_api = 'SINGLE'
+        elif all([ranges[0][0] == ranges[i][0] and ranges[0][1] == ranges[i][1] \
+                  for i in range(len(ranges))]):
+            # multiple keywords with same range also go to single API!
+            ts_api = 'SINGLE'
+        else:
+            ts_api = 'MULTI'
+
         try:
             widgets = self._get_explore(keywords=keywords, ranges=ranges,
                                         geos=geos, granularity=granularity)
             series = self._get_timeseries(payload=widgets['TIMESERIES'], keyword_num=len(keywords),
-                                          ts_api='SINGLE' if len(keywords) == 1 else 'MULTI')
+                                          ts_api=ts_api)
         except requests.exceptions.HTTPError as err:
             raise requests.exceptions.RequestException(err)
         except requests.exceptions.ConnectionError as err:
