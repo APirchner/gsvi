@@ -15,7 +15,7 @@ from typing import Dict, List, Tuple, Union
 import requests
 import pandas as pd
 
-from .cat_codes import CategoryCodes
+from .catcodes import CategoryCodes
 
 # pylint: disable=too-many-arguments
 class GoogleConnection:

@@ -30,7 +30,7 @@ from typing import Dict, List, Tuple, Union
 
 import pandas as pd
 
-from gsvi.google_connection import GoogleConnection
+from gsvi.connection import GoogleConnection
 
 
 class SVSeries:

@@ -3,7 +3,7 @@
 import unittest
 import datetime
 
-from gsvi.google_connection import GoogleConnection
+from gsvi.connection import GoogleConnection
 
 
 class GoogleConnectionTest(unittest.TestCase):
@@ -11,7 +11,7 @@ class GoogleConnectionTest(unittest.TestCase):
 
     def setUp(self) -> None:
         """ sets the connection up. """
-        self.connection = GoogleConnection()
+        self.connection = GoogleConnection(timeout=30)
 
     def test_count(self):
         """ Simple query count check. """
