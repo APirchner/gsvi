@@ -15,7 +15,9 @@ from typing import Dict, List, Tuple, Union
 import requests
 import pandas as pd
 
+from .cat_codes import CategoryCodes
 
+# pylint: disable=too-many-arguments
 class GoogleConnection:
     """ Connection to Google Trends.
 
@@ -27,6 +29,8 @@ class GoogleConnection:
         ts = gc.get_timeseries(queries)
 
     Attributes:
+        language: The language, defaults to 'en-US'
+        timezone: The timezone in minutes, defaults to 0
         timeout: The timeout for the GET-requests.
     Raises:
         requests.exceptions.RequestException
@@ -38,9 +42,10 @@ class GoogleConnection:
         'MULTI': 'https://trends.google.com/trends/api/widgetdata/multirange'
     }
 
-    def __init__(self, timeout=5.0):
+    def __init__(self, language='en-US', timezone=0, timeout=5.0):
+        self.timezone = timezone
+        self.language = language
         self.timeout = timeout
-        self.language = 'en-US'
         self.session = requests.Session()
         try:
             response = self.session.get(self.URL_BASE, timeout=self.timeout)
@@ -65,7 +70,7 @@ class GoogleConnection:
 
     def _get_explore(self, keywords: List[str],
                      ranges: List[Tuple[datetime.datetime, datetime.datetime]],
-                     geos: List[str], granularity: str) -> dict:
+                     geos: List[str], category: CategoryCodes, granularity: str) -> dict:
         """ Makes a request to GT Explore API to get payloads and tokens for the widgets. """
 
         # Transforms the datetime interval into the correct string for the requested granularity
@@ -75,7 +80,7 @@ class GoogleConnection:
 
         params = {
             'hl': self.language,
-            'tz': 360,
+            'tz': self.timezone,
             'req': json.dumps({
                 'comparisonItem':
                     [{
@@ -83,7 +88,7 @@ class GoogleConnection:
                         'time': time,
                         'geo': geo,
                     } for key, time, geo in zip(keywords, ranges_str, geos)],
-                'category': 0,
+                'category': category,
                 'property': ''
             })
         }
@@ -106,7 +111,7 @@ class GoogleConnection:
         """
         params = {
             'hl': self.language,
-            'tz': 360,
+            'tz': self.timezone,
             'req': json.dumps(payload['req']),
             'token': payload['token']
         }
@@ -130,17 +135,22 @@ class GoogleConnection:
             ]
         return content_parsed
 
-    def get_timeseries(
-            self, queries: List[Dict[str, Union[str, Tuple[datetime.datetime, datetime.datetime]]]],
-            granularity='DAY') -> List[pd.Series]:
+    def get_timeseries(self,
+                       queries: List[Dict[str, Union[str,
+                                                     Tuple[datetime.datetime, datetime.datetime],
+                                                     CategoryCodes]]],
+                       category=CategoryCodes.NONE,
+                       granularity='DAY') -> List[pd.Series]:
         """
         Makes the request to Google Trends for the specified queries.
         A maximum of 5 queries is supported.
         Args:
             queries: The queries as a list of dicts with ranges as
                      tuples of datetime objects. Example:
-                         [{'key': 'apple', 'geo': 'US', 'range': (start, end)},
-                          {'key': 'orange', 'geo': 'US', 'range': (start, end)}]
+                         [{'key': 'apple', 'geo': 'US',
+                          'range': (start, end), 'cat': cat_codes.HEALTH},
+                          {'key': 'orange', 'geo': 'US',
+                          'range': (start, end), 'cat': cat_codes.HEALTH}]
             granularity: The step length of the requested series, either 'DAY' or 'HOUR'
         Returns:
             A list of pd.Series, one series for each query.
@@ -152,6 +162,13 @@ class GoogleConnection:
         """
         if len(queries) > 5:
             raise ValueError('Too many ({0} > 5) queries!'.format(len(queries)))
+        if not all(['key' in query for query in queries]):
+            raise KeyError('Every query has to provide a "key"!')
+        if not all(['range' in query for query in queries]):
+            raise KeyError('Every query has to provide a "range"!')
+        if any(['geo' in query for query in queries]) and \
+                not all(['geo' in query for query in queries]):
+            raise KeyError('None or all queries have to provide a "geo"!')
 
         keywords = []
         ranges = []
@@ -159,7 +176,7 @@ class GoogleConnection:
         for query in queries:
             keywords.append(query['key'])
             ranges.append(query['range'])
-            geos.append(query['geo'].upper())
+            geos.append(query['geo'].upper() if 'geo' in query else '')
 
         # assign query to its GT API url
         if len(ranges) == 1:
@@ -173,7 +190,7 @@ class GoogleConnection:
 
         try:
             widgets = self._get_explore(keywords=keywords, ranges=ranges,
-                                        geos=geos, granularity=granularity)
+                                        geos=geos, category=category, granularity=granularity)
             series = self._get_timeseries(payload=widgets['TIMESERIES'], keyword_num=len(keywords),
                                           ts_api=ts_api)
         except requests.exceptions.HTTPError as err:
