@@ -4,6 +4,7 @@ import unittest
 import datetime
 
 from gsvi.connection import GoogleConnection
+from gsvi.catcodes import CategoryCodes
 
 
 class GoogleConnectionTest(unittest.TestCase):
@@ -19,10 +20,14 @@ class GoogleConnectionTest(unittest.TestCase):
         self.assertRaises(ValueError, self.connection.get_timeseries, queries)
 
     def test_single_short_daily(self):
-        """ Tests a single query for 2 days. """
+        """
+        Tests a single query for 2 days worldwide.
+        Subtests check the length of the resulting series,
+        the normalization, the start and end date.
+        """
         start = datetime.datetime(year=2019, month=9, day=1)
         end = datetime.datetime(year=2019, month=9, day=2)
-        queries = [{'key': 'apple', 'geo': 'US',
+        queries = [{'key': 'apple', 'geo': '',
                     'range': (start, end)}]
         result = self.connection.get_timeseries(queries, granularity='DAY')
         with self.subTest('result_count'):
@@ -37,7 +42,11 @@ class GoogleConnectionTest(unittest.TestCase):
             self.assertEqual(result[0].index.date[-1], end.date())
 
     def test_multi_long_daily(self):
-        """ Tests multiple queries for 30 days. """
+        """
+        Tests multiple queries for 30 days in geo US and category COMPUTERS_ELECTRONICS.
+        Subtests check the length of the resulting series,
+        the normalization, the start and end date.
+        """
         start = datetime.datetime(year=2019, month=9, day=1)
         end = datetime.datetime(year=2019, month=10, day=1)
         queries = [{'key': 'apple', 'geo': 'US',
@@ -51,7 +60,9 @@ class GoogleConnectionTest(unittest.TestCase):
                    {'key': 'strawberry', 'geo': 'US',
                     'range': (start, end)}
                    ]
-        result = self.connection.get_timeseries(queries, granularity='DAY')
+        result = self.connection.get_timeseries(queries,
+                                                category=CategoryCodes.COMPUTERS_ELECTRONICS,
+                                                granularity='DAY')
         with self.subTest('result_count'):
             self.assertEqual(len(queries), len(result))
         with self.subTest('result_length'):
