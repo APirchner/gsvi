@@ -42,7 +42,7 @@ U.S from 2014-09-13 to 2019-06-13:
 import datetime as dt
 
 from gsvi.connection import GoogleConnection
-from gsvi.requests import SVSeries
+from gsvi.timeseries import SVSeries
 
 # series start and end
 start = dt.datetime(year=2014, month=9, day=13)

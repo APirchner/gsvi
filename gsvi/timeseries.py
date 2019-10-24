@@ -155,7 +155,7 @@ class SVSeries:
         self._bounds = bounds
 
     @request_structure.setter
-    def request_structure(self, request_structure):
+    def request_structure(self, request_structure: Dict[str, List]):
         self.is_consistent = False
         self._request_structure = request_structure
 

@@ -193,6 +193,7 @@ class GoogleConnection:
                                         geos=geos, category=category, granularity=granularity)
             series = self._get_timeseries(payload=widgets['TIMESERIES'], keyword_num=len(keywords),
                                           ts_api=ts_api)
+            return series
         except requests.exceptions.HTTPError as err:
             raise requests.exceptions.RequestException(err)
         except requests.exceptions.ConnectionError as err:
@@ -201,4 +202,3 @@ class GoogleConnection:
             raise requests.exceptions.RequestException(err)
         except requests.exceptions.RequestException as err:
             raise requests.exceptions.RequestException(err)
-        return series
