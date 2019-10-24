@@ -38,6 +38,27 @@ class SVSeries:
     The main purpose of this class is to get arbitrary-length time series
     data from Google Trends for one or more keywords.
 
+    Attributes:
+        connection:
+            The connection to Google Trends
+        queries:
+            The user-specified queries dicts as list [{'key': 'word', 'geo': 'country'}, ...].
+        bounds:
+            The date range for the time series.
+            Depending on the location of the maximum, the lower bound may not hold (see get_data()).
+        category:
+            The category for the search volume. Possible categories are in the CategorgyCodes enum.
+        granularity:
+            The series granularity, either 'DAY' or 'HOUR'.
+        data:
+            The search volume data after the get_data() call.
+        request_structure:
+            The query fragments in levels, showing how the optimum was obtained.
+        is_consistent:
+            Flag indicating if the data is still consistent
+            with the other attributes of the instance.
+            This is set to True when get_data() runs successfully.
+
     Example usage:
         gc = GoogleConnection(timeout=10)
         start = datetime.datetime(year=2017, month=1, day=1)
@@ -181,8 +202,7 @@ class SVSeries:
 
     @classmethod
     def multivariate(cls, connection: GoogleConnection, queries: List[Dict[str, str]],
-                     start: datetime.datetime, end: datetime.datetime,
-                     **kwargs):
+                     start: datetime.datetime, end: datetime.datetime, **kwargs):
         """
         Builds a multivariate search volume series. Initially, the series holds no data.
         Call get_data() to fill it.
@@ -223,8 +243,9 @@ class SVSeries:
             intervals.append((lower, upper))
         return intervals
 
-    def _get_max_request(self, queries) \
-            -> Dict[str, Union[str, Tuple[datetime.datetime, datetime.datetime]]]:
+    def _get_max_request(
+            self, queries
+    ) -> Dict[str, Union[str, Tuple[datetime.datetime, datetime.datetime]]]:
         """ Finds the maximum search volume query out of a set of queries """
         response = self.connection.get_timeseries(queries=queries,
                                                   category=self.category,

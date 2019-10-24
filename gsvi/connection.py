@@ -17,6 +17,9 @@ import pandas as pd
 
 from catcodes import CategoryCodes
 
+# type alias
+QueryDict = Dict[str, Union[str, Tuple[datetime.datetime, datetime.datetime], CategoryCodes]]
+
 
 # pylint: disable=too-many-arguments
 class GoogleConnection:
@@ -136,12 +139,8 @@ class GoogleConnection:
             ]
         return content_parsed
 
-    def get_timeseries(self,
-                       queries: List[Dict[str, Union[str,
-                                                     Tuple[datetime.datetime, datetime.datetime],
-                                                     CategoryCodes]]],
-                       category=CategoryCodes.NONE,
-                       granularity='DAY') -> List[pd.Series]:
+    def get_timeseries(self, queries: List[QueryDict],
+                       category=CategoryCodes.NONE, granularity='DAY') -> List[pd.Series]:
         """
         Makes the request to Google Trends for the specified queries.
         A maximum of 5 queries is supported.
