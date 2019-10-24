@@ -1,7 +1,9 @@
-""" Tests for the Google Trends connection and the request structure. """
+""" Tests for the Google Trends connection. """
 
 import unittest
 import datetime
+
+import requests
 
 from gsvi.connection import GoogleConnection
 from gsvi.catcodes import CategoryCodes
@@ -77,6 +79,23 @@ class GoogleConnectionTest(unittest.TestCase):
             for series in result:
                 self.assertEqual(series.index.date[0], start.date())
 
+    def test_invalid_dates(self):
+        """ Tests case start > end. """
+        start = datetime.datetime(year=2019, month=9, day=10)
+        end = datetime.datetime(year=2019, month=9, day=1)
+        queries = [{'key': 'apple', 'geo': '',
+                    'range': (start, end)}]
+        self.assertRaises(requests.exceptions.RequestException,
+                          self.connection.get_timeseries, queries)
+
+    def test_invalid_geo(self):
+        """ Tests invalid geo. """
+        start = datetime.datetime(year=2019, month=9, day=10)
+        end = datetime.datetime(year=2019, month=9, day=1)
+        queries = [{'key': 'apple', 'geo': 'FAIL',
+                    'range': (start, end)}]
+        self.assertRaises(requests.exceptions.RequestException,
+                          self.connection.get_timeseries, queries)
 
 if __name__ == '__main__':
     unittest.main()
