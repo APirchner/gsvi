@@ -15,13 +15,11 @@ Example usage:
                 {'key': 'microsoft', 'geo': 'US'}],
                 start, end, 'DAY')
     data = series.get_data()
-
 """
-
-# pylint: disable=too-many-instance-attributes, too-many-arguments
 
 import time
 import datetime
+import warnings
 
 import json
 import math
@@ -31,6 +29,7 @@ from typing import Dict, List, Tuple, Union
 import pandas as pd
 
 from gsvi.connection import GoogleConnection
+from gsvi.catcodes import CategoryCodes
 
 
 class SVSeries:
@@ -46,21 +45,23 @@ class SVSeries:
         series = SVSeries.multivariate(gc,
                     [{'key': 'apple', 'geo': 'US'},
                     {'key': 'microsoft', 'geo': 'US'}],
-                    start, end, 'DAY')
+                    start, end, granularity='DAY')
         data = series.get_data()
     """
+    # pylint: disable=too-many-instance-attributes
+    # @property causes pylint to count attributes twice
+
     MAX_FRGMNTS = 5
     GRANULARITIES = ['DAY', 'HOUR']
 
     def __init__(self, connection: GoogleConnection, queries: List[Dict[str, str]],
-                 bounds: Tuple[datetime.datetime, datetime.datetime],
-                 granularity='DAY', delay=10):
+                 bounds: Tuple[datetime.datetime, datetime.datetime], **kwargs):
         self.connection = connection
-        self.delay = delay
         self.is_consistent = False
         self.data = None
         self.queries = queries
-        self.granularity = granularity
+        self.granularity = kwargs['granularity'] if 'granularity' in kwargs else 'DAY'
+        self.category = kwargs['category'] if 'category' in kwargs else CategoryCodes.NONE
         self.bounds = bounds
         self.request_structure = None
 
@@ -86,6 +87,16 @@ class SVSeries:
         Setting this after a call to GT sets the is_consistent flag to False.
         """
         return self._granularity
+
+    @property
+    def category(self):
+        """
+        Holds the category of the search volume query.
+        Setting this after a call to GT sets the is_consistent flag to False.
+        Returns:
+
+        """
+        return self._category
 
     @property
     def bounds(self):
@@ -119,6 +130,11 @@ class SVSeries:
         self.is_consistent = False
         self._granularity = granularity.upper()
 
+    @category.setter
+    def category(self, category: CategoryCodes):
+        self.is_consistent = False
+        self._category = category
+
     @bounds.setter
     def bounds(self, bounds: Tuple[datetime.datetime, datetime.datetime]):
         # DAY: minimal time series has two entries
@@ -146,7 +162,7 @@ class SVSeries:
     @classmethod
     def univariate(cls, connection: GoogleConnection, query: Dict[str, str],
                    start: datetime.datetime, end: datetime.datetime,
-                   granularity='DAY', delay=10):
+                   **kwargs):
         """
         Builds a univariate search volume series. Initially, the series holds no data.
         Call get_data() to fill it.
@@ -155,18 +171,18 @@ class SVSeries:
             query: The query dict e.g. {'key': 'apple', 'geo': 'US'}.
             start: The start of the series >= 2004/01/01
             end: The end of the series.
-            granularity: The granularity of the requested series.
-                         Either 'DAY' or 'HOUR'.
-            delay: The average delay between requests in seconds.
+        Keyword Args:
+            granularity: the granularity of the series ('DAY' or 'HOUR')
+            category: volume for a specfic search category (see catcodes)
         Returns:
             A SVSeries with empty data.
         """
-        return cls(connection, [query], (start, end), granularity, delay)
+        return cls(connection, [query], (start, end), **kwargs)
 
     @classmethod
     def multivariate(cls, connection: GoogleConnection, queries: List[Dict[str, str]],
                      start: datetime.datetime, end: datetime.datetime,
-                     granularity='DAY', delay=10):
+                     **kwargs):
         """
         Builds a multivariate search volume series. Initially, the series holds no data.
         Call get_data() to fill it.
@@ -175,13 +191,13 @@ class SVSeries:
             query: The query dict e.g. {'key': 'apple', 'geo': 'US'}.
             start: The start of the series >= 2004/01/01
             end: The end of the series.
-            granularity: The granularity of the requested series.
-                         Either 'DAY' or 'HOUR'.
-            delay: The average delay between requests in seconds.
+        Keyword Args:
+            granularity: the granularity of the series ('DAY' or 'HOUR')
+            category: volume for a specfic search category (see catcodes)
         Returns:
             A SVSeries with empty data.
         """
-        return cls(connection, queries, (start, end), granularity, delay)
+        return cls(connection, queries, (start, end), **kwargs)
 
     def __repr__(self):
         return self.request_structure
@@ -210,20 +226,32 @@ class SVSeries:
     def _get_max_request(self, queries) \
             -> Dict[str, Union[str, Tuple[datetime.datetime, datetime.datetime]]]:
         """ Finds the maximum search volume query out of a set of queries """
-        response = self.connection.get_timeseries(queries, self.granularity)
+        response = self.connection.get_timeseries(queries=queries,
+                                                  category=self.category,
+                                                  granularity=self.granularity)
         for i, query in enumerate(queries):
             if response[i].max() == 100:
                 return query
         raise ValueError('Response to queries {0} contains no max of 100'.format(queries))
 
-    def get_data(self) -> Union[pd.DataFrame, pd.Series]:
+    def get_data(self, delay=10, force_truncation=False) -> Union[pd.DataFrame, pd.Series]:
         '''
         Builds the request structure for the queries and builds requests to Google Trends
         such that the resulting time series values are normalized to [0, 100].
+        Args:
+            delay: put delay seconds +/- 25% between requests to avoid getting banned
+            force_truncation: Truncate to the specified bounds even
+            if the maximal volume (100) does not lie within this interval.
+            This is necessary because GT requires equal-length fragments
+            and the algorithm extends the range beyond start if necessary.
+            The maximum is guaranteed to lie within start - 90 (7 for HOURLY) days.
+            Default is to not truncate in case the maximum falls into this area.
         Returns:
             The normalized time series as pd.Series (univariate) or pd.Dataframe (multivariate).
         Raises:
             requests.exceptions.RequestException
+        Warnings:
+            UserWarning: in case truncation is not forced and maximum is in area to be truncated.
         '''
 
         if self.data is not None:
@@ -249,13 +277,14 @@ class SVSeries:
                 for j in range(0, len(requests[i]), self.MAX_FRGMNTS):
                     layer.append(self._get_max_request(requests[i][j:j + self.MAX_FRGMNTS]))
                     # random delay between requests -> delay +/- 25%
-                    time.sleep(self.delay + random.uniform(self.delay * -0.25, self.delay * 0.25))
+                    time.sleep(delay + random.uniform(delay * -0.25, delay * 0.25))
                 requests.append(layer)
             # Phase 2 - normalize over maximum
             response_flat = []
             for i in range(0, len(requests[0]), self.MAX_FRGMNTS - 1):
                 response_flat.extend(self.connection.get_timeseries(
                     queries=requests[0][i:i + self.MAX_FRGMNTS - 1] + requests[-1],
+                    category=self.category,
                     granularity=self.granularity
                 )[:-1])
         # Postprocessing - unflatten normalized responses back into queries
@@ -266,10 +295,15 @@ class SVSeries:
             series.name = requests[0][i + len(intervals) - 1]['key']
             response_stacked.append(series)
         self._request_structure = {'layer_{0}'.format(i): requests[i] for i in range(len(requests))}
-        self.is_consistent = True
         if len(response_stacked) == 1:
-            self.data = response_stacked[0].loc[self.bounds[0]:]
+            self.data = response_stacked[0]
         else:
-            self.data = pd.DataFrame(response_stacked).T.loc[self.bounds[0]:]
+            self.data = pd.DataFrame(response_stacked).T
+
+        if not force_truncation and self.data.idxmax() < self.bounds[0]:
+            warnings.warn(
+                'Maximal volume is not in specified range. Series is longer than requested!')
+        else:
+            self.data = self.data[self.bounds[0]:]
         self.is_consistent = True  # data is now consistent
         return self.data
