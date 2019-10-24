@@ -15,7 +15,8 @@ from typing import Dict, List, Tuple, Union
 import requests
 import pandas as pd
 
-from .catcodes import CategoryCodes
+from catcodes import CategoryCodes
+
 
 # pylint: disable=too-many-arguments
 class GoogleConnection:
@@ -166,9 +167,8 @@ class GoogleConnection:
             raise KeyError('Every query has to provide a "key"!')
         if not all(['range' in query for query in queries]):
             raise KeyError('Every query has to provide a "range"!')
-        if any(['geo' in query for query in queries]) and \
-                not all(['geo' in query for query in queries]):
-            raise KeyError('None or all queries have to provide a "geo"!')
+        if not all(['geo' in query for query in queries]):
+            raise KeyError('Every query has to provide a "geo"!')
 
         keywords = []
         ranges = []
@@ -176,7 +176,7 @@ class GoogleConnection:
         for query in queries:
             keywords.append(query['key'])
             ranges.append(query['range'])
-            geos.append(query['geo'].upper() if 'geo' in query else '')
+            geos.append(query['geo'].upper())
 
         # assign query to its GT API url
         if len(ranges) == 1:
