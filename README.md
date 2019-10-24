@@ -24,12 +24,12 @@ For each request, the volume is normalized to have a maximal value of 100.
 
 So the query for the daily search volume for keyword abc in some interval,
 is handled by *gsvi* as follows: 
- 1. Bundle the query into requests of 5 30-day fragments each and
+ 1. Bundle the query into requests of 5 90-day fragments each and
  get the SV from Google Trends.
  2. Look for the query holding the maximum (100) in each request.
  3. Bundle the fragments holding the maxima into requests of 5 each and get the SV from Google Trends.
  4. Repeat 2.-3. until only one interval holding the global maximum is left.
- 5. Bundle the original query into requests of 4 30-day fragments +
+ 5. Bundle the original query into requests of 4 90-day fragments +
  fragment with global maximum get the SV from Google Trends.
  
  This procedure results in a continuous series that is normalized to
