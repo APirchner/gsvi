@@ -47,7 +47,7 @@ class SVSeries:
             The date range for the time series.
             Depending on the location of the maximum, the lower bound may not hold (see get_data()).
         category:
-            The category for the search volume. Possible categories are in the CategorgyCodes enum.
+            The category for the search volume. Possible categories are in the CategoryCodes enum.
         granularity:
             The series granularity, either 'DAY' or 'HOUR'.
         data:
@@ -73,7 +73,7 @@ class SVSeries:
     # @property causes pylint to count attributes twice
 
     MAX_FRGMNTS = 5
-    GRANULARITIES = ['DAY', 'HOUR']
+    GRANULARITIES = {'MONTH': (1890,), 'DAY': (1, 269), 'HOUR': (3, 7)}
 
     def __init__(self, connection: GoogleConnection, queries: List[Dict[str, str]],
                  bounds: Tuple[datetime.datetime, datetime.datetime], **kwargs):
@@ -158,20 +158,14 @@ class SVSeries:
 
     @bounds.setter
     def bounds(self, bounds: Tuple[datetime.datetime, datetime.datetime]):
-        # DAY: minimal time series has two entries
-        # HOUR: if interval is shorter than 3 days with HOUR, trends returns sub-hourly data
-        delta_min = datetime.timedelta(days=1) if self.granularity == 'DAY' \
-            else datetime.timedelta(days=3)
-
-        if bounds[0] + delta_min > bounds[1]:
-            raise ValueError(
-                'Invalid interval! DAY: min end is start + 2 days, HOUR min end is start + 2 days!')
         if bounds[0] < datetime.datetime(year=2004, month=1, day=1):
             raise ValueError('Earliest date is 2004/01/01!')
         if bounds[0] >= datetime.datetime.now():
             raise ValueError('Begin of series has to be in the past!')
         if bounds[1] >= datetime.datetime.now():
             raise ValueError('End of series has to be in the past!')
+        if bounds[0] >= bounds[1]:
+            raise ValueError('Start date has to be smaller than end date!')
         self.is_consistent = False
         self._bounds = bounds
 
@@ -230,17 +224,32 @@ class SVSeries:
         Splits the given interval into tuples of (lower, upper) suited
         for building requests in the requested granularity.
         """
-        interval_length = datetime.timedelta(days=90) if self.granularity == 'DAY' \
-            else datetime.timedelta(days=7)
-        offset = datetime.timedelta(days=1) if self.granularity == 'DAY' \
-            else datetime.timedelta(hours=1)
+        if self.granularity == 'HOUR':
+            days = max(min((self.bounds[1] - self.bounds[0]).days,
+                           self.GRANULARITIES['HOUR'][1]),
+                       self.GRANULARITIES['HOUR'][0])
+            interval_length = datetime.timedelta(days=days)
+            offset = datetime.timedelta(hours=1)
+        elif self.granularity == 'MONTH':
+            # no need to split requests for monthly data
+            days = max((self.bounds[1] - self.bounds[0]).days,
+                       self.GRANULARITIES['MONTH'][0])
+            interval_length = datetime.timedelta(days=days)
+            offset = datetime.timedelta(days=1)
+        else:
+            days = max(min((self.bounds[1] - self.bounds[0]).days,
+                           self.GRANULARITIES['DAY'][1]),
+                       self.GRANULARITIES['DAY'][0])
+            interval_length = datetime.timedelta(days=days)
+            offset = datetime.timedelta(days=1)
+
         time_pointer = self.bounds[1]
         intervals = []
         while time_pointer > self.bounds[0]:
             upper = time_pointer
             time_pointer -= interval_length
-            lower = time_pointer + offset
-            intervals.append((lower, upper))
+            intervals.append((time_pointer, upper))
+            time_pointer -= offset
         return intervals
 
     def _get_max_request(
@@ -260,13 +269,15 @@ class SVSeries:
         Builds the request structure for the queries and builds requests to Google Trends
         such that the resulting time series values are normalized to [0, 100].
         Args:
-            delay: put delay seconds +/- 25% between requests to avoid getting banned
-            force_truncation: Truncate to the specified bounds even
-            if the maximal volume (100) does not lie within this interval.
-            This is necessary because GT requires equal-length fragments
-            and the algorithm extends the range beyond start if necessary.
-            The maximum is guaranteed to lie within start - 90 (7 for HOURLY) days.
-            Default is to not truncate in case the maximum falls into this area.
+            delay:
+                Put delay seconds +/- 25% between requests to avoid getting banned
+            force_truncation:
+                Truncate to the specified bounds even
+                if the maximal volume (100) does not lie within this interval.
+                This is necessary because GT requires equal-length fragments
+                and the algorithm extends the range beyond start if necessary.
+                The maximum is guaranteed to lie within start - 90 (7 for HOURLY) days.
+                Default is to not truncate in case the maximum falls into this area.
         Returns:
             The normalized time series as pd.Series (univariate) or pd.Dataframe (multivariate).
         Raises:
@@ -318,10 +329,12 @@ class SVSeries:
         self._request_structure = {'layer_{0}'.format(i): requests[i] for i in range(len(requests))}
         if len(response_stacked) == 1:
             self.data = response_stacked[0]
+            max_date = self.data.idxmax()
         else:
             self.data = pd.DataFrame(response_stacked).T
+            max_date = self.data.max(axis=1).idxmax()
 
-        if not force_truncation and self.data.idxmax() < self.bounds[0]:
+        if not force_truncation and max_date < self.bounds[0]:
             warnings.warn(
                 'Maximal volume is not in specified range. Series is longer than requested!')
         else:

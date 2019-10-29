@@ -79,7 +79,7 @@ class GoogleConnection:
 
         # Transforms the datetime interval into the correct string for the requested granularity
         ranges_str = [' '.join(
-            [d.strftime('%Y-%m-%d') if granularity == 'DAY' \
+            [d.strftime('%Y-%m-%d') if granularity != 'HOUR' \
                  else d.strftime('%Y-%m-%dT%H') for d in dates]) for dates in ranges]
 
         params = {
