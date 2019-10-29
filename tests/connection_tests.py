@@ -97,5 +97,6 @@ class GoogleConnectionTest(unittest.TestCase):
         self.assertRaises(requests.exceptions.RequestException,
                           self.connection.get_timeseries, queries)
 
+
 if __name__ == '__main__':
     unittest.main()
