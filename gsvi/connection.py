@@ -148,15 +148,24 @@ class GoogleConnection:
                        category=CategoryCodes.NONE, granularity='DAY') -> List[pd.Series]:
         """
         Makes the request to Google Trends for the specified queries.
+        This method only does very basic input checks as
+        this is handled by the objects using the connection.
         A maximum of 5 queries is supported.
         Args:
-            queries: The queries as a list of dicts with ranges as
-                     tuples of datetime objects. Example:
-                         [{'key': 'apple', 'geo': 'US',
-                          'range': (start, end), 'cat': CategoryCodes.HEALTH},
-                          {'key': 'orange', 'geo': 'US',
-                          'range': (start, end), 'cat': CategoryCodes.HEALTH}]
-            granularity: The step length of the requested series, either 'DAY' or 'HOUR'
+            queries:
+                The queries as a list of dicts with ranges as tuples of datetime objects.
+                Example:
+                    [{'key': 'apple', 'geo': 'US',
+                    'range': (start, end), 'cat': CategoryCodes.HEALTH},
+                    {'key': 'orange', 'geo': 'US',
+                    'range': (start, end), 'cat': CategoryCodes.HEALTH}]
+            category:
+                The category for the query, defaults to CategoryCodes.NONE.
+            granularity:
+                The step length of the requested series, either 'DAY'/'MONTH' or 'HOUR'.
+                Defaults to 'DAY'. Depending on the query ranges,
+                the granularity returned by GT might differ.
+                Check the SVSeries docs for details.
         Returns:
             A list of pd.Series, one series for each query.
             The values are normalized over the maximal value
