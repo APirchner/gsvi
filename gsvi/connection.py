@@ -15,7 +15,7 @@ from typing import Dict, List, Tuple, Union
 import requests
 import pandas as pd
 
-from catcodes import CategoryCodes
+from gsvi.catcodes import CategoryCodes
 
 # type alias
 QueryDict = Dict[str, Union[str, Tuple[datetime.datetime, datetime.datetime], CategoryCodes]]
@@ -36,6 +36,7 @@ class GoogleConnection:
         language: The language, defaults to 'en-US'
         timezone: The timezone in minutes, defaults to 0
         timeout: The timeout for the GET-requests.
+        verbose: Print request URLs?
     Raises:
         requests.exceptions.RequestException
     """
@@ -46,22 +47,13 @@ class GoogleConnection:
         'MULTI': 'https://trends.google.com/trends/api/widgetdata/multirange'
     }
 
-    def __init__(self, language='en-US', timezone=0, timeout=5.0):
+    def __init__(self, language='en-US', timezone=0, timeout=5.0, verbose=False):
         self.timezone = timezone
         self.language = language
         self.timeout = timeout
+        self.verbose = verbose
         self.session = requests.Session()
-        try:
-            response = self.session.get(self.URL_BASE, timeout=self.timeout)
-            response.raise_for_status()
-        except requests.exceptions.HTTPError as err:
-            raise requests.exceptions.RequestException(err)
-        except requests.exceptions.ConnectionError as err:
-            raise requests.exceptions.RequestException(err)
-        except requests.exceptions.Timeout as err:
-            raise requests.exceptions.RequestException(err)
-        except requests.exceptions.RequestException as err:
-            raise requests.exceptions.RequestException(err)
+        self._get_request(self.URL_BASE)
 
     def __del__(self):
         self.session.close()
@@ -71,6 +63,21 @@ class GoogleConnection:
 
     def __str__(self):
         return json.dumps(self.session.headers, indent=4, sort_keys=True, default=str)
+
+    def _get_request(self, url: str, params: Dict = None):
+        """ Wraps the session's get request to bundle the request exceptions. """
+        try:
+            response = self.session.get(url, params=params, timeout=self.timeout)
+            response.raise_for_status()
+            return response
+        except requests.exceptions.HTTPError as err:
+            raise requests.exceptions.RequestException(err)
+        except requests.exceptions.ConnectionError as err:
+            raise requests.exceptions.RequestException(err)
+        except requests.exceptions.Timeout as err:
+            raise requests.exceptions.RequestException(err)
+        except requests.exceptions.RequestException as err:
+            raise requests.exceptions.RequestException(err)
 
     def _get_explore(self, keywords: List[str],
                      ranges: List[Tuple[datetime.datetime, datetime.datetime]],
@@ -96,9 +103,9 @@ class GoogleConnection:
                 'property': ''
             })
         }
-
-        response = self.session.get(self.URL_EXPLORE, params=params, timeout=self.timeout)
-        response.raise_for_status()
+        response = self._get_request(self.URL_EXPLORE, params=params)
+        if self.verbose:
+            print(response.url)
         # explore API has 5 leading garbage bytes
         content_raw = json.loads(response.content[5:])['widgets']
         content_dict = {widget['id']: {
@@ -119,9 +126,7 @@ class GoogleConnection:
             'req': json.dumps(payload['req']),
             'token': payload['token']
         }
-
-        response = self.session.get(self.URL_TS[ts_api], params=params, timeout=self.timeout)
-        response.raise_for_status()
+        response = self._get_request(self.URL_TS[ts_api], params=params)
         content_raw = json.loads(response.content[5:])['default']['timelineData']
 
         if ts_api == 'MULTI':
@@ -148,9 +153,9 @@ class GoogleConnection:
             queries: The queries as a list of dicts with ranges as
                      tuples of datetime objects. Example:
                          [{'key': 'apple', 'geo': 'US',
-                          'range': (start, end), 'cat': cat_codes.HEALTH},
+                          'range': (start, end), 'cat': CategoryCodes.HEALTH},
                           {'key': 'orange', 'geo': 'US',
-                          'range': (start, end), 'cat': cat_codes.HEALTH}]
+                          'range': (start, end), 'cat': CategoryCodes.HEALTH}]
             granularity: The step length of the requested series, either 'DAY' or 'HOUR'
         Returns:
             A list of pd.Series, one series for each query.
@@ -187,17 +192,8 @@ class GoogleConnection:
         else:
             ts_api = 'MULTI'
 
-        try:
-            widgets = self._get_explore(keywords=keywords, ranges=ranges,
-                                        geos=geos, category=category, granularity=granularity)
-            series = self._get_timeseries(payload=widgets['TIMESERIES'], keyword_num=len(keywords),
-                                          ts_api=ts_api)
-            return series
-        except requests.exceptions.HTTPError as err:
-            raise requests.exceptions.RequestException(err)
-        except requests.exceptions.ConnectionError as err:
-            raise requests.exceptions.RequestException(err)
-        except requests.exceptions.Timeout as err:
-            raise requests.exceptions.RequestException(err)
-        except requests.exceptions.RequestException as err:
-            raise requests.exceptions.RequestException(err)
+        widgets = self._get_explore(keywords=keywords, ranges=ranges,
+                                    geos=geos, category=category, granularity=granularity)
+        series = self._get_timeseries(payload=widgets['TIMESERIES'], keyword_num=len(keywords),
+                                      ts_api=ts_api)
+        return series
