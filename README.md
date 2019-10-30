@@ -18,7 +18,6 @@ series = SVSeries.univariate(connection=connection,
 ts = series.get_data()
 ```
 
-
 ## Idea
 Google Trends' quota limits are a big factor slowing down the collection of data.
 Packing requests tightly reduced the load on GT and pushes the limits
@@ -29,9 +28,7 @@ GT reports daily data for queries with an interval length between 1 and 269 days
 hourly data between  3 and 7 days and
 monthly data from 1890 days on (NOTE: this could change at any time!).
 For each request, the volume within one request is normalized to have a maximal value of 100.
-
-So the query for the daily/hourly search volume for keyword abc in some interval,
-is handled by *gsvi* as follows: 
+So the query for the daily/hourly search volume for keyword abc in some interval, is handled by *gsvi* as follows: 
  1. Bundle the query into requests of max. 5 269-day (7-day for hourly) fragments each and
  get the SV from Google Trends. If this is sufficient to cover the whole interval, skip the next steps.
  2. Look for the query holding the maximum (100) in each request.
