@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-with open('README.rst') as f:
+with open('README.md') as f:
     readme = f.read()
 
 with open('LICENSE') as f:
@@ -8,12 +8,13 @@ with open('LICENSE') as f:
 
 setup(
     name='gsvi',
-    version='0.1.0',
+    version='0.1',
     url='https://github.com/APirchner/gsvi',
     license=license,
     author='Andreas Pirchner',
     author_email='andreas.pirchner1990@gmail.com',
-    description='Interface for Google Trends time-series',
+    description='Interface for the Google Trends time-series widget',
+    keywords=['Google Trends', 'search volume', 'google search volume'],
     long_description=readme,
     packages=find_packages(exclude=('tests', 'docs'))
 )

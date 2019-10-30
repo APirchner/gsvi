@@ -114,7 +114,9 @@ class SVMultivariateTest(unittest.TestCase):
         """
         start = datetime.datetime(year=2019, month=8, day=1)
         end = datetime.datetime(year=2019, month=9, day=1)
-        queries = [{'key': 'apple', 'geo': 'US'}, {'key': 'orange', 'geo': 'US'}]
+        queries = [{'key': 'apple', 'geo': 'US'}, {'key': 'google', 'geo': 'US'},
+                   {'key': 'microsoft', 'geo': 'US'}, {'key': 'oracle', 'geo': 'US'},
+                   {'key': 'facebook', 'geo': 'US'}, {'key': 'uber', 'geo': 'US'}]
         series = SVSeries.multivariate(self.connection, queries, start, end,
                                        category=CategoryCodes.COMPUTERS_ELECTRONICS,
                                        granularity='MONTH')
