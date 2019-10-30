@@ -40,20 +40,23 @@ class SVSeries:
 
     Attributes:
         connection:
-            The connection to Google Trends
+            The connection to Google Trends.
         queries:
             The user-specified queries dicts as list [{'key': 'word', 'geo': 'country'}, ...].
         bounds:
             The date range for the time series.
-            Depending on the location of the maximum, the lower bound may not hold (see get_data()).
+            Depending on the location of the maximum and the granularity,
+            the lower bound may not hold (see get_data()).
         category:
-            The category for the search volume. Possible categories are in the CategoryCodes enum.
+            The category for the search volume.
+            Possible categories are in the CategoryCodes enum.
         granularity:
-            The series granularity, either 'DAY' or 'HOUR'.
+            The series granularity, either 'DAY', 'HOUR' or 'MONTH'.
         data:
             The search volume data after the get_data() call.
         request_structure:
-            The query fragments in levels, showing how the optimum was obtained.
+            The query fragments in levels after the get_data() call,
+            showing how the optimum was obtained.
         is_consistent:
             Flag indicating if the data is still consistent
             with the other attributes of the instance.
@@ -68,6 +71,16 @@ class SVSeries:
                     {'key': 'microsoft', 'geo': 'US'}],
                     start, end, granularity='DAY')
         data = series.get_data()
+
+    CAUTION: One has to take care when specifying certain time span/granularity combinations.
+    Google Trends switches from returning weekly to monthly data
+    when the span is >= 1890 days (63 months).
+    SVSeries can handle by extending the lower boundary date if necessary.
+    The same happens with daily data when the span is longer than
+    269 days AND not a multiple of 269 days.
+    For hourly data, the switch to minute data happens at < 3 days.
+    This weird behavior has changed in the past and might change again in the future!
+    See get_data() for more on how this problem.
     """
     # pylint: disable=too-many-instance-attributes
     # @property causes pylint to count attributes twice
@@ -104,7 +117,7 @@ class SVSeries:
     @property
     def granularity(self):
         """
-        Holds the granularity of the series. Either 'DAY' or 'HOUR'.
+        Holds the granularity of the series. Either 'DAY', 'HOUR' or 'MONTH'.
         Setting this after a call to GT sets the is_consistent flag to False.
         """
         return self._granularity
@@ -182,15 +195,25 @@ class SVSeries:
         Builds a univariate search volume series. Initially, the series holds no data.
         Call get_data() to fill it.
         Args:
-            connection: The GoogleConnection to use for the requests.
-            query: The query dict e.g. {'key': 'apple', 'geo': 'US'}.
-            start: The start of the series >= 2004/01/01
-            end: The end of the series.
+            connection:
+                The GoogleConnection to use for the requests.
+            query:
+                The query dict e.g. {'key': 'apple', 'geo': 'US'}.
+            start:
+                The start of the series >= 2004/01/01.
+            end:
+                The end of the series <= now
         Keyword Args:
-            granularity: the granularity of the series ('DAY' or 'HOUR')
-            category: volume for a specfic search category (see catcodes)
+            granularity:
+                The granularity of the series ('DAY', 'HOUR' or 'MONTH').
+                Defaults to 'DAY' if not given.
+            category:
+                Volume for a specfic search category (see catcodes).
+                Defaults to CategoryCodes.NONE if not given.
         Returns:
             A SVSeries with empty data.
+        Raises:
+            ValueError
         """
         return cls(connection, [query], (start, end), **kwargs)
 
@@ -201,15 +224,26 @@ class SVSeries:
         Builds a multivariate search volume series. Initially, the series holds no data.
         Call get_data() to fill it.
         Args:
-            connection: The GoogleConnection to use for the requests.
-            query: The query dict e.g. {'key': 'apple', 'geo': 'US'}.
-            start: The start of the series >= 2004/01/01
-            end: The end of the series.
+            connection:
+                The GoogleConnection to use for the requests.
+            query:
+                A list of query dicts e.g.
+                [{'key': 'apple', 'geo': 'US'}, {'key': 'orange', 'geo': 'US'}].
+            start:
+                The start of the series >= 2004/01/01.
+            end:
+                The end of the series <= now
         Keyword Args:
-            granularity: the granularity of the series ('DAY' or 'HOUR')
-            category: volume for a specfic search category (see catcodes)
+            granularity:
+                The granularity of the series ('DAY', 'HOUR' or 'MONTH').
+                Defaults to 'DAY' if not given.
+            category:
+                Volume for a specfic search category (see catcodes).
+                Defaults to CategoryCodes.NONE if not given.
         Returns:
             A SVSeries with empty data.
+        Raises:
+            ValueError
         """
         return cls(connection, queries, (start, end), **kwargs)
 
@@ -217,7 +251,8 @@ class SVSeries:
         return self.request_structure
 
     def __str__(self):
-        return json.dumps(self.request_structure, indent=4, sort_keys=True, default=str)
+        return json.dumps(self.request_structure, indent=4,
+                          separators=(',', ': '), sort_keys=True, default=str)
 
     def _build_intervals(self) -> List[Tuple[datetime.datetime, datetime.datetime]]:
         """
@@ -268,15 +303,17 @@ class SVSeries:
         '''
         Builds the request structure for the queries and builds requests to Google Trends
         such that the resulting time series values are normalized to [0, 100].
+        The returned data might be extended beyond the lower bound specified in the query.
+        This is necessary because GT returns data in different intervals
+        depending on the specified range and granularity.
+        One can enforce the correct length but might get data not in [0, 100]
+        in case the maximum falls into the part that gets truncated.
         Args:
             delay:
-                Put delay seconds +/- 25% between requests to avoid getting banned
+                Put delay seconds +/- 25% between requests to avoid getting banned.
             force_truncation:
                 Truncate to the specified bounds even
-                if the maximal volume (100) does not lie within this interval.
-                This is necessary because GT requires equal-length fragments
-                and the algorithm extends the range beyond start if necessary.
-                The maximum is guaranteed to lie within start - 90 (7 for HOURLY) days.
+                if the maximal volume (100) does fall into this interval.
                 Default is to not truncate in case the maximum falls into this area.
         Returns:
             The normalized time series as pd.Series (univariate) or pd.Dataframe (multivariate).
