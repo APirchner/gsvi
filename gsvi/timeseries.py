@@ -42,19 +42,26 @@ class SVSeries:
 
     Attributes:
         connection: The connection to Google Trends.
-        queries: The user-specified queries dicts as list [{'key': 'word', 'geo': 'country'}, ...].
-        bounds: The date range for the time series.
-        Depending on the location of the maximum and the granularity,
-        the lower bound may not hold (see :func:`get_data`).
-        category: The category for the search volume.
-        Possible categories are in the CategoryCodes enum.
-        granularity: The series granularity, either 'DAY', 'HOUR' or 'MONTH'.
-        data: The search volume data after the :func:`get_data` call.
-        request_structure: The query fragments in levels after the :func:`get_data` call,
-        showing how the optimum was obtained.
-        is_consistent: Flag indicating if the data is still consistent
-        with the other attributes of the instance.
-        This is set to True when :func:`get_data` runs successfully.
+        queries:
+            The user-specified queries dicts as list [{'key': 'word', 'geo': 'country'}, ...].
+        bounds:
+            The date range for the time series.
+            Depending on the location of the maximum and the granularity,
+            the lower bound may not hold (see :func:`get_data`).
+        category:
+            The category for the search volume.
+            Possible categories are in the CategoryCodes enum.
+        granularity:
+            The series granularity, either 'DAY', 'HOUR' or 'MONTH'.
+        data:
+            The search volume data after the :func:`get_data` call.
+        request_structure:
+            The query fragments in levels after the :func:`get_data` call,
+            showing how the optimum was obtained.
+        is_consistent:
+            Flag indicating if the data is still consistent
+            with the other attributes of the instance.
+            This is set to True when :func:`get_data` runs successfully.
 
     CAUTION: One has to take care when specifying certain time span/granularity combinations.
     Google Trends switches from returning weekly to monthly data
@@ -64,7 +71,7 @@ class SVSeries:
     269 days AND not a multiple of 269 days.
     For hourly data, the switch to minute data happens at < 3 days.
     This weird behavior has changed in the past and might change again in the future!
-    See get_data() for more on how this problem.
+    See :func:`get_data` for more on how this problem.
     """
     # pylint: disable=too-many-instance-attributes,missing-function-docstring
     # @property causes pylint to count attributes twice
@@ -155,14 +162,20 @@ class SVSeries:
         Call :func:`get_data` to fill it.
 
         Args:
-            connection: The GoogleConnection to use for the requests.
-            query: The query dict.
-            start: The start of the series >= 2004/01/01.
-            end: The end of the series <= now
+            connection:
+                The GoogleConnection to use for the requests.
+            query:
+                The query dict.
+            start:
+                The start of the series >= 2004/01/01.
+            end:
+                The end of the series <= now
         Keyword Args:
-            granularity: The granularity of the series ('DAY', 'HOUR' or 'MONTH').
+            granularity:
+                The granularity of the series ('DAY', 'HOUR' or 'MONTH').
                 Defaults to 'DAY' if not given.
-            category: Volume for a specfic search category (see :mod:`gsvi.catcodes`).
+            category:
+                Volume for a specfic search category (see :mod:`gsvi.catcodes`).
                 Defaults to CategoryCodes.NONE if not given.
         Returns:
             A SVSeries with empty data.
@@ -179,15 +192,21 @@ class SVSeries:
         Call :func:`get_data` to fill it.
 
         Args:
-            connection: The GoogleConnection to use for the requests.
-            query: A list of query dicts.
-            start: The start of the series >= 2004/01/01.
-            end: The end of the series <= now
+            connection:
+                The GoogleConnection to use for the requests.
+            query:
+                A list of query dicts.
+            start:
+                The start of the series >= 2004/01/01.
+            end:
+                The end of the series <= now
         Keyword Args:
-            granularity: The granularity of the series ('DAY', 'HOUR' or 'MONTH').
-            Defaults to 'DAY' if not given.
-            category: Volume for a specfic search category (see :mod:`gsvi.catcodes`).
-            Defaults to CategoryCodes.NONE if not given.
+            granularity:
+                The granularity of the series ('DAY', 'HOUR' or 'MONTH').
+                Defaults to 'DAY' if not given.
+            category:
+                Volume for a specfic search category (see :mod:`gsvi.catcodes`).
+                Defaults to CategoryCodes.NONE if not given.
         Returns:
             A SVSeries with empty data.
         Raises:
@@ -256,11 +275,14 @@ class SVSeries:
         depending on the specified range and granularity. One can enforce the
         correct length but might get data not in [0, 100] in case the maximum
         falls into the part that gets truncated.
+
         Args:
-            delay: Put delay seconds between requests to avoid getting banned.
-            force_truncation: Truncate to the specified bounds even if the maximal
-            volume (100) does fall into this interval. Default is to not truncate
-            in case the maximum falls into this area.
+            delay:
+                 Put delay seconds between requests to avoid getting banned.
+            force_truncation:
+                 Truncate to the specified bounds even if the maximal
+                 volume (100) does fall into this interval. Default is to not truncate
+                 in case the maximum falls into this area.
         Returns:
             The normalized time series as pd.Series (univariate) or pd.Dataframe (multivariate).
         Raises:

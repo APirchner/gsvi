@@ -100,6 +100,15 @@ Or, what about the monthly volume of car brand searches in Germany from 2004 to 
     ts = series.get_data()
 
 
+
+Installation
+============
+
+::
+
+$ pip install gsvi
+
+
 Credits
 =======
 

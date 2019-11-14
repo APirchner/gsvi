@@ -142,17 +142,20 @@ class GoogleConnection:
         Makes the request to Google Trends for the specified queries.
         This method only does very basic input checks as
         this is handled by the objects using the connection.
+
         Args:
             queries:
                 The queries as a list of dicts with ranges as tuples of datetime objects.
+                A maximum of 5 queries is supported.
                 Example::
 
-                    query = [{'key': 'apple', 'geo': 'US',
-                            'range': (start, end), 'cat': CategoryCodes.HEALTH},
-                            {'key': 'orange', 'geo': 'US',
-                            'range': (start, end), 'cat': CategoryCodes.HEALTH}]
+                    [{'key': 'apple', 'geo': 'US',
+                    'range': (start, end),
+                    'cat': CategoryCodes.HEALTH},
+                    {'key': 'orange', 'geo': 'US',
+                    'range': (start, end),
+                    'cat': CategoryCodes.HEALTH}]
 
-                A maximum of 5 queries is supported.
             category:
                 The category for the query, defaults to CategoryCodes.NONE.
             granularity:
