@@ -1,11 +1,7 @@
 """ Holds GoogleConnection class.
 
 This module provides the interface to Google Trends via the GoogleConnection class.
-For now, it only interacts with GT's time series widget via the get_timeseries() method.
-Example usage:
-    queries = [{...}]
-    gc = GoogleConnection()
-    ts = gc.get_timeseries(queries)
+For now, it only interacts with GT's time series widget via the :func:`get_timeseries` method.
 """
 
 import json
@@ -27,10 +23,6 @@ class GoogleConnection:
 
     Offers the interface to Google Trends. For now, this is limited
     to the time series widget but can be extended easily.
-    Usage:
-        queries = [{...}]
-        gc = GoogleConnection()
-        ts = gc.get_timeseries(queries)
 
     Attributes:
         language: The language, defaults to 'en-US'
@@ -150,15 +142,17 @@ class GoogleConnection:
         Makes the request to Google Trends for the specified queries.
         This method only does very basic input checks as
         this is handled by the objects using the connection.
-        A maximum of 5 queries is supported.
         Args:
             queries:
                 The queries as a list of dicts with ranges as tuples of datetime objects.
-                Example:
-                    [{'key': 'apple', 'geo': 'US',
-                    'range': (start, end), 'cat': CategoryCodes.HEALTH},
-                    {'key': 'orange', 'geo': 'US',
-                    'range': (start, end), 'cat': CategoryCodes.HEALTH}]
+                Example::
+
+                    query = [{'key': 'apple', 'geo': 'US',
+                            'range': (start, end), 'cat': CategoryCodes.HEALTH},
+                            {'key': 'orange', 'geo': 'US',
+                            'range': (start, end), 'cat': CategoryCodes.HEALTH}]
+
+                A maximum of 5 queries is supported.
             category:
                 The category for the query, defaults to CategoryCodes.NONE.
             granularity:

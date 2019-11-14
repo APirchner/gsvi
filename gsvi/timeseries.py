@@ -1,12 +1,13 @@
 """ Holds time series request structure for Google Trends.
 
 The SVSeries class implements an algorithm to get arbitrary-length
-time series with values in [0, 100] from GT in the get_data() method.
+time series with values in [0, 100] from GT in the :func:`get_data` method.
 This algorithm ensures that GT itself handles the normalization, thus
 making the series easier to compare.
 It can fetch uni- and multivariate queries.
 
-Example usage:
+Example usage::
+
     gc = GoogleConnection(timeout=10)
     start = datetime.datetime(year=2017, month=1, day=1)
     end = datetime.datetime(year=2019, month=9, day=30)
@@ -15,6 +16,7 @@ Example usage:
                 {'key': 'microsoft', 'geo': 'US'}],
                 start, end, 'DAY')
     data = series.get_data()
+
 """
 
 import time
@@ -39,38 +41,20 @@ class SVSeries:
     data from Google Trends for one or more keywords.
 
     Attributes:
-        connection:
-            The connection to Google Trends.
-        queries:
-            The user-specified queries dicts as list [{'key': 'word', 'geo': 'country'}, ...].
-        bounds:
-            The date range for the time series.
-            Depending on the location of the maximum and the granularity,
-            the lower bound may not hold (see get_data()).
-        category:
-            The category for the search volume.
-            Possible categories are in the CategoryCodes enum.
-        granularity:
-            The series granularity, either 'DAY', 'HOUR' or 'MONTH'.
-        data:
-            The search volume data after the get_data() call.
-        request_structure:
-            The query fragments in levels after the get_data() call,
-            showing how the optimum was obtained.
-        is_consistent:
-            Flag indicating if the data is still consistent
-            with the other attributes of the instance.
-            This is set to True when get_data() runs successfully.
-
-    Example usage:
-        gc = GoogleConnection(timeout=10)
-        start = datetime.datetime(year=2017, month=1, day=1)
-        end = datetime.datetime(year=2019, month=9, day=30)
-        series = SVSeries.multivariate(gc,
-                    [{'key': 'apple', 'geo': 'US'},
-                    {'key': 'microsoft', 'geo': 'US'}],
-                    start, end, granularity='DAY')
-        data = series.get_data()
+        connection: The connection to Google Trends.
+        queries: The user-specified queries dicts as list [{'key': 'word', 'geo': 'country'}, ...].
+        bounds: The date range for the time series.
+        Depending on the location of the maximum and the granularity,
+        the lower bound may not hold (see :func:`get_data`).
+        category: The category for the search volume.
+        Possible categories are in the CategoryCodes enum.
+        granularity: The series granularity, either 'DAY', 'HOUR' or 'MONTH'.
+        data: The search volume data after the :func:`get_data` call.
+        request_structure: The query fragments in levels after the :func:`get_data` call,
+        showing how the optimum was obtained.
+        is_consistent: Flag indicating if the data is still consistent
+        with the other attributes of the instance.
+        This is set to True when :func:`get_data` runs successfully.
 
     CAUTION: One has to take care when specifying certain time span/granularity combinations.
     Google Trends switches from returning weekly to monthly data
@@ -82,7 +66,7 @@ class SVSeries:
     This weird behavior has changed in the past and might change again in the future!
     See get_data() for more on how this problem.
     """
-    # pylint: disable=too-many-instance-attributes
+    # pylint: disable=too-many-instance-attributes,missing-function-docstring
     # @property causes pylint to count attributes twice
 
     MAX_FRGMNTS = 5
@@ -101,51 +85,26 @@ class SVSeries:
 
     @property
     def connection(self):
-        """
-        Holds the GoogleConnection.
-        """
         return self._connection
 
     @property
     def queries(self):
-        """
-        Holds the queries dict.
-        Setting this after a call to GT sets the is_consistent flag to False.
-        """
         return self._queries
 
     @property
     def granularity(self):
-        """
-        Holds the granularity of the series. Either 'DAY', 'HOUR' or 'MONTH'.
-        Setting this after a call to GT sets the is_consistent flag to False.
-        """
         return self._granularity
 
     @property
     def category(self):
-        """
-        Holds the category of the search volume query.
-        Setting this after a call to GT sets the is_consistent flag to False.
-        Returns:
-
-        """
         return self._category
 
     @property
     def bounds(self):
-        """
-        Holds the date range of the time series.
-        Setting this after a call to GT sets the is_consistent flag to False.
-        """
         return self._bounds
 
     @property
     def request_structure(self):
-        """
-        Holds the request structure as a dict after calling get_data().
-        Setting this after a call to GT sets the is_consistent flag to False.
-        """
         return self._request_structure
 
     @connection.setter
@@ -193,22 +152,17 @@ class SVSeries:
                    **kwargs):
         """
         Builds a univariate search volume series. Initially, the series holds no data.
-        Call get_data() to fill it.
+        Call :func:`get_data` to fill it.
+
         Args:
-            connection:
-                The GoogleConnection to use for the requests.
-            query:
-                The query dict e.g. {'key': 'apple', 'geo': 'US'}.
-            start:
-                The start of the series >= 2004/01/01.
-            end:
-                The end of the series <= now
+            connection: The GoogleConnection to use for the requests.
+            query: The query dict.
+            start: The start of the series >= 2004/01/01.
+            end: The end of the series <= now
         Keyword Args:
-            granularity:
-                The granularity of the series ('DAY', 'HOUR' or 'MONTH').
+            granularity: The granularity of the series ('DAY', 'HOUR' or 'MONTH').
                 Defaults to 'DAY' if not given.
-            category:
-                Volume for a specfic search category (see catcodes).
+            category: Volume for a specfic search category (see :mod:`gsvi.catcodes`).
                 Defaults to CategoryCodes.NONE if not given.
         Returns:
             A SVSeries with empty data.
@@ -222,24 +176,18 @@ class SVSeries:
                      start: datetime.datetime, end: datetime.datetime, **kwargs):
         """
         Builds a multivariate search volume series. Initially, the series holds no data.
-        Call get_data() to fill it.
+        Call :func:`get_data` to fill it.
+
         Args:
-            connection:
-                The GoogleConnection to use for the requests.
-            query:
-                A list of query dicts e.g.
-                [{'key': 'apple', 'geo': 'US'}, {'key': 'orange', 'geo': 'US'}].
-            start:
-                The start of the series >= 2004/01/01.
-            end:
-                The end of the series <= now
+            connection: The GoogleConnection to use for the requests.
+            query: A list of query dicts.
+            start: The start of the series >= 2004/01/01.
+            end: The end of the series <= now
         Keyword Args:
-            granularity:
-                The granularity of the series ('DAY', 'HOUR' or 'MONTH').
-                Defaults to 'DAY' if not given.
-            category:
-                Volume for a specfic search category (see catcodes).
-                Defaults to CategoryCodes.NONE if not given.
+            granularity: The granularity of the series ('DAY', 'HOUR' or 'MONTH').
+            Defaults to 'DAY' if not given.
+            category: Volume for a specfic search category (see :mod:`gsvi.catcodes`).
+            Defaults to CategoryCodes.NONE if not given.
         Returns:
             A SVSeries with empty data.
         Raises:
@@ -302,19 +250,17 @@ class SVSeries:
     def get_data(self, delay=10, force_truncation=False) -> Union[pd.DataFrame, pd.Series]:
         '''
         Builds the request structure for the queries and builds requests to Google Trends
-        such that the resulting time series values are normalized to [0, 100].
-        The returned data might be extended beyond the lower bound specified in the query.
-        This is necessary because GT returns data in different intervals
-        depending on the specified range and granularity.
-        One can enforce the correct length but might get data not in [0, 100]
-        in case the maximum falls into the part that gets truncated.
+        such that the resulting time series values are normalized to [0, 100]. The returned
+        data might be extended beyond the lower bound specified in the query. This is
+        necessary because GT returns data in different intervals
+        depending on the specified range and granularity. One can enforce the
+        correct length but might get data not in [0, 100] in case the maximum
+        falls into the part that gets truncated.
         Args:
-            delay:
-                Put delay seconds +/- 25% between requests to avoid getting banned.
-            force_truncation:
-                Truncate to the specified bounds even
-                if the maximal volume (100) does fall into this interval.
-                Default is to not truncate in case the maximum falls into this area.
+            delay: Put delay seconds between requests to avoid getting banned.
+            force_truncation: Truncate to the specified bounds even if the maximal
+            volume (100) does fall into this interval. Default is to not truncate
+            in case the maximum falls into this area.
         Returns:
             The normalized time series as pd.Series (univariate) or pd.Dataframe (multivariate).
         Raises:
