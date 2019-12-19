@@ -14,7 +14,7 @@ import pandas as pd
 from gsvi.catcodes import CategoryCodes
 
 # type alias
-QueryDict = Dict[str, Union[str, Tuple[datetime.datetime, datetime.datetime], CategoryCodes]]
+QueryDict = Dict[str, Union[str, Tuple[datetime.datetime, datetime.datetime]]]
 
 
 # pylint: disable=too-many-arguments
@@ -36,7 +36,8 @@ class GoogleConnection:
     URL_EXPLORE = 'https://trends.google.com/trends/api/explore'
     URL_TS = {
         'SINGLE': 'https://trends.google.com/trends/api/widgetdata/multiline',
-        'MULTI': 'https://trends.google.com/trends/api/widgetdata/multirange'
+        'MULTI': 'https://trends.google.com/trends/api/widgetdata/multirange',
+        'RELATED': 'https://trends.google.com/trends/api/widgetdata/relatedsearches'
     }
 
     def __init__(self, language='en-US', timezone=0, timeout=5.0, verbose=False):
@@ -139,7 +140,7 @@ class GoogleConnection:
     def get_timeseries(self, queries: List[QueryDict],
                        category=CategoryCodes.NONE, granularity='DAY') -> List[pd.Series]:
         """
-        Makes the request to Google Trends for the specified queries.
+        Makes the timeseries request to Google Trends for the specified queries.
         This method only does very basic input checks as
         this is handled by the objects using the connection.
 
@@ -150,11 +151,9 @@ class GoogleConnection:
                 Example::
 
                     [{'key': 'apple', 'geo': 'US',
-                    'range': (start, end),
-                    'cat': CategoryCodes.HEALTH},
+                    'range': (start, end)}
                     {'key': 'orange', 'geo': 'US',
-                    'range': (start, end),
-                    'cat': CategoryCodes.HEALTH}]
+                    'range': (start, end)}
 
             category:
                 The category for the query, defaults to CategoryCodes.NONE.
@@ -203,3 +202,73 @@ class GoogleConnection:
         series = self._get_timeseries(payload=widgets['TIMESERIES'], keyword_num=len(keywords),
                                       ts_api=ts_api)
         return series
+
+    def _get_related_queries(self, payload: dict):
+        params = {
+            'hl': self.language,
+            'tz': self.timezone,
+            'req': json.dumps(payload['req']),
+            'token': payload['token']
+        }
+        response = self._get_request(self.URL_TS['RELATED'], params=params)
+        # first 5 bytes are garbage
+        content_raw = json.loads(response.content[5:])['default']['rankedList']
+        top = pd.DataFrame(content_raw[0]['rankedKeyword'])[['query', 'value', 'link']]
+        rising = pd.DataFrame(content_raw[1]['rankedKeyword'])[['query', 'value', 'link']]
+        return top, rising
+
+    def get_related_queries(self, queries: List[QueryDict],
+                            category=CategoryCodes.NONE) -> Dict[str, Dict[str, pd.DataFrame]]:
+        """
+        Makes the related-queries request to Google Trends for the specified queries.
+        This method only does very basic input checks as
+        this is handled by the objects using the connection.
+
+        Args:
+            queries:
+                The queries as a list of dicts with ranges as tuples of datetime objects.
+                A maximum of 5 queries is supported.
+                Example::
+
+                    [{'key': 'apple', 'geo': 'US',
+                    'range': (start, end)}
+                    {'key': 'orange', 'geo': 'US',
+                    'range': (start, end)}
+
+            category:
+                The category for the query, defaults to CategoryCodes.NONE.
+        Returns:
+            A dict of keywords with a pd.Dataframes for top and rising queries for each key.
+        Raises:
+            ValueError
+            requests.exceptions.RequestException
+        """
+        if len(queries) > 5:
+            raise ValueError('Too many ({0} > 5) queries!'.format(len(queries)))
+        if not all(['key' in query for query in queries]):
+            raise KeyError('Every query has to provide a "key"!')
+        if not all(['range' in query for query in queries]):
+            raise KeyError('Every query has to provide a "range"!')
+        if not all(['geo' in query for query in queries]):
+            raise KeyError('Every query has to provide a "geo"!')
+
+        keywords = []
+        ranges = []
+        geos = []
+        for query in queries:
+            keywords.append(query['key'])
+            ranges.append(query['range'])
+            geos.append(query['geo'].upper())
+
+        if len(keywords) == 1:
+            widget_names = ['RELATED_QUERIES']
+        else:
+            widget_names = ['RELATED_QUERIES_{0}'.format(i) for i in range(len(keywords))]
+
+        related = {}
+        widgets = self._get_explore(keywords=keywords, ranges=ranges,
+                                    geos=geos, category=category, granularity='DAY')
+        for key, name in zip(keywords, widget_names):
+            top, rising = self._get_related_queries(payload=widgets[name])
+            related[key] = {'top': top, 'rising': rising}
+        return related
