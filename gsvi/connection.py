@@ -1,7 +1,8 @@
 """ Holds GoogleConnection class.
 
 This module provides the interface to Google Trends via the GoogleConnection class.
-For now, it only interacts with GT's time series widget via the :func:`get_timeseries` method.
+Interacts with GT's time series widget via the :func:`get_timeseries` method,
+related queries via :func:`get_related_queries`.
 """
 
 import json
@@ -21,8 +22,8 @@ QueryDict = Dict[str, Union[str, Tuple[datetime.datetime, datetime.datetime]]]
 class GoogleConnection:
     """ Connection to Google Trends.
 
-    Offers the interface to Google Trends. For now, this is limited
-    to the time series widget but can be extended easily.
+    Offers the interface to Google Trends. For now, it connects to the
+    time-series widget and related queries widget.
 
     Attributes:
         language: The language, defaults to 'en-US'
@@ -204,6 +205,11 @@ class GoogleConnection:
         return series
 
     def _get_related_queries(self, payload: dict):
+        """
+        Makes the request to the RELATED_QUERIES widget by using the payload,
+        token obtained by _get_explore() and parses the json into pd.Dataframes
+        for top and rising related queries.
+        """
         params = {
             'hl': self.language,
             'tz': self.timezone,
