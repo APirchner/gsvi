@@ -291,7 +291,7 @@ class SVSeries:
             UserWarning: in case truncation is not forced and maximum is in area to be truncated.
         '''
 
-        if self.data is not None:
+        if self.data is not None and self.is_consistent:
             # return cached data to avoid getting the data again
             return self.data
 
