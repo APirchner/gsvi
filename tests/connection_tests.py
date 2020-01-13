@@ -88,11 +88,30 @@ class GoogleConnectionTest(unittest.TestCase):
     def test_invalid_geo(self):
         """ Tests invalid geo. """
         start = datetime.datetime(year=2019, month=9, day=10)
-        end = datetime.datetime(year=2019, month=9, day=1)
+        end = datetime.datetime(year=2019, month=9, day=20)
         queries = [{'key': 'apple', 'geo': 'FAIL',
                     'range': (start, end)}]
         self.assertRaises(requests.exceptions.RequestException,
                           self.connection.get_timeseries, queries)
+
+    def test_related_multi(self):
+        """ Tests related-query functionality for multiple query. """
+        start = datetime.datetime(year=2004, month=1, day=1)
+        end = datetime.datetime(year=2019, month=9, day=26)
+        queries = [{'key': 'apple', 'geo': 'US',
+                    'range': (start, end)},
+                   {'key': 'orange', 'geo': 'US',
+                    'range': (start, end)},
+                   {'key': 'banana', 'geo': 'US',
+                    'range': (start, end)},
+                   {'key': 'kiwi', 'geo': 'US',
+                    'range': (start, end)},
+                   {'key': 'strawberry', 'geo': 'US',
+                    'range': (start, end)}
+                   ]
+        result = self.connection.get_related_queries(queries)
+        with self.subTest('result_keys'):
+            self.assertListEqual(list(result.keys()), [query['key'] for query in queries])
 
 
 if __name__ == '__main__':
