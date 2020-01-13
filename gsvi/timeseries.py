@@ -267,7 +267,7 @@ class SVSeries:
         raise ValueError('Response to queries {0} contains no max of 100'.format(queries))
 
     def get_data(self, delay=10, force_truncation=False) -> Union[pd.DataFrame, pd.Series]:
-        '''
+        """
         Builds the request structure for the queries and builds requests to Google Trends
         such that the resulting time series values are normalized to [0, 100]. The returned
         data might be extended beyond the lower bound specified in the query. This is
@@ -289,7 +289,7 @@ class SVSeries:
             requests.exceptions.RequestException
         Warnings:
             UserWarning: in case truncation is not forced and maximum is in area to be truncated.
-        '''
+        """
 
         if self.data is not None and self.is_consistent:
             # return cached data to avoid getting the data again
