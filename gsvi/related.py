@@ -5,18 +5,19 @@ fetches the related queries from Google Trends. The returned data contains
 the related queries for each query, the corresponding value and
 the link to the Google Trends search for the related query.
 
-Example usage:
+Example usage::
 
     gc = GoogleConnection(timeout=10)
     start = datetime.datetime(year=2017, month=1, day=1)
     end = datetime.datetime(year=2019, month=9, day=30)
-    series = RelatedQueries(gc,
+    related = RelatedQueries.multiple(gc,
                 [{'key': 'apple', 'geo': 'US'},
                 {'key': 'microsoft', 'geo': 'US'}],
-                (start, end))
-    data = series.get_data()
+                start, end)
+    data = related.get_data()
 
 """
+
 import datetime
 from typing import Dict, List, Tuple
 
