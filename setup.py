@@ -5,9 +5,9 @@ with open('README.rst') as f:
 
 setup(
     name='gsvi',
-    version='v0.1',
+    version='v0.2',
     url='https://github.com/APirchner/gsvi',
-    download_url = 'https://github.com/APirchner/gsvi/archive/v1.0.tar.gz',
+    download_url = 'https://github.com/APirchner/gsvi/archive/v2.0.tar.gz',
     license='MIT',
     author='Andreas Pirchner',
     author_email='andreas.pirchner1990@gmail.com',
