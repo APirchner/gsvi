@@ -48,6 +48,7 @@ class RelatedQueries:
             with the other attributes of the instance.
             This is set to True when :func:`get_data` runs successfully.
     """
+
     # pylint: disable=too-many-instance-attributes,missing-function-docstring
     # @property causes pylint to count attributes twice
 
@@ -117,7 +118,7 @@ class RelatedQueries:
 
     @classmethod
     def single(cls, connection: GoogleConnection, query: Dict[str, str],
-               bounds: Tuple[datetime.datetime, datetime.datetime], **kwargs):
+               start: datetime.datetime, end: datetime.datetime, **kwargs):
         """
         Builds a RelatedQueries object for a single query. Initially, the series holds no data.
         Call :func:`get_data` to fill it.
@@ -140,11 +141,11 @@ class RelatedQueries:
         Raises:
             ValueError
         """
-        return cls(connection, [query], bounds, **kwargs)
+        return cls(connection, [query], (start, end), **kwargs)
 
     @classmethod
     def multiple(cls, connection: GoogleConnection, queries: List[Dict[str, str]],
-                 bounds: Tuple[datetime.datetime, datetime.datetime], **kwargs):
+                 start: datetime.datetime, end: datetime.datetime, **kwargs):
         """
         Builds a RelatedQueries object for multiple queries. Initially, the series holds no data.
         Call :func:`get_data` to fill it.
@@ -167,7 +168,7 @@ class RelatedQueries:
         Raises:
             ValueError
         """
-        return cls(connection, queries, bounds, **kwargs)
+        return cls(connection, queries, (start, end), **kwargs)
 
     def get_data(self) -> Dict[str, Dict[str, pd.DataFrame]]:
         '''
