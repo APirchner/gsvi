@@ -1,16 +1,23 @@
 language: python
-
 branches:
   only:
-    - master
-
+  - master
 python:
-  - "3.7"
-  - "3.8"
-
+- '3.7'
+- '3.8'
 install:
-  - pip install pytest
-  - pip install -r requirements.txt
-
-script:
-  - pytest
+- pip install pytest
+- pip install -r requirements.txt
+jobs:
+  include:
+  - stage: test
+  - script: pytest
+deploy:
+  provider: pypi
+  username: "__token__"
+  password:
+    secure: "M7saXrYju3GXv5J2gEumcIbH9jlsdWojMsJecvvJolx0UVdrTSz6AiqX7OB4B4+JTSyH0mqr61hdlkHH4PS9Un28PJ6iEfHzc/UbTX2+aWS2/RJ1spW6oHUv8ADFvlsv/ZMduRbxsRu4YzRwR2NAMtaOIEVCJsfsvj7VesR8ZvAep5sYntYNB68uX1/7lpxFzzhSIS8kC0HGjWAbpnv5bieScA+8BXgZPW3z+2zpOXDWtrRx4ExIqMphJAgVtc03xVvIGiWJYUItLUq0w2WI9inlwQKgpmg/qYeP/sgJvw8/VaP02kngELBtzlzOrRRJvnIF1HSKVjNJInd2K1k8SSANwfT9OasJH473LScRxKO+IJDhImbz6MgoFkFaGibSvGG9qUCKa4V0UwAgsjMmyH4NraIotbyRvok3Zly1aEUEvRwF4+pgDR/qHp2FWxbadS10MKHy+8ZUn6K3lm7T58ha/Ozm3AvBJN2YxDcJLzf7jQpW0Ll1jjA+3jBwp/tCwa3GfcHheEQ+HxfwL1l5opUzjWpdAK+VgPByBxlYtS6MOD0ZqALjjluSEc7wUGiebKIhxKwHVWbiEmbrj0pU+urn5I+x053NxlMu9LWjCTSk58DRWUk+1sLszHyjsmmA5t6jR4N2fwKwCRfAtmNK13mACXuvk+sPpJnHdrKBhWM="
+  on:
+    tags: true
+    branch: master
+  skip_existing: true
