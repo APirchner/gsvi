@@ -1,3 +1,6 @@
+.. image:: https://travis-ci.com/APirchner/gsvi.svg?branch=master
+    :target: https://travis-ci.com/APirchner/gsvi
+
 GSVI - Google Search Volume Index
 *********************************
 
