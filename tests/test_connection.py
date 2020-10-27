@@ -8,7 +8,7 @@ import requests
 from gsvi.connection import GoogleConnection
 
 
-class GoogleConnectionTest(unittest.TestCase):
+class test_GoogleConnection(unittest.TestCase):
     """ Tests the GoogleConnection. """
 
     def setUp(self) -> None:
@@ -112,7 +112,3 @@ class GoogleConnectionTest(unittest.TestCase):
         result = self.connection.get_related_queries(queries)
         with self.subTest('result_keys'):
             self.assertListEqual(list(result.keys()), [query['key'] for query in queries])
-
-
-if __name__ == '__main__':
-    unittest.main()

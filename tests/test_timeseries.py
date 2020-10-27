@@ -8,7 +8,7 @@ from gsvi.timeseries import SVSeries
 from gsvi.catcodes import CategoryCodes
 
 
-class SVUnivariateTest(unittest.TestCase):
+class test_SVUnivariate(unittest.TestCase):
     """ Tests SVSeries with univariate queries. """
 
     def setUp(self) -> None:
@@ -86,7 +86,7 @@ class SVUnivariateTest(unittest.TestCase):
             self.assertEqual(len(data), math.floor((end - start).days / 30) - 1)
 
 
-class SVMultivariateTest(unittest.TestCase):
+class test_SVMultivariate(unittest.TestCase):
     """ Tests SVSeries with multivariate queries. """
 
     def setUp(self) -> None:
@@ -165,7 +165,3 @@ class SVMultivariateTest(unittest.TestCase):
             self.assertTrue(any(data.max() == 100))
         with self.subTest('result_monthly'):
             self.assertEqual(data.shape[0], math.floor((end - start).days / 30))
-
-
-if __name__ == '__main__':
-    unittest.main()
