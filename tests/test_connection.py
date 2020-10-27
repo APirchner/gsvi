@@ -1,5 +1,6 @@
 """ Tests for the Google Trends connection. """
 
+import pytest
 import unittest
 import datetime
 

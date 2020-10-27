@@ -1,4 +1,6 @@
 """ Tests for the time series structure. """
+
+import pytest
 import unittest
 import datetime
 import math
