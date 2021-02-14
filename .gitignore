@@ -1,3 +1,5 @@
 venv
 .idea
 gsvi.egg-info
+build
+dist

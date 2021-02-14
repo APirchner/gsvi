@@ -16,7 +16,7 @@ setup(
     long_description=readme,
     long_description_content_type='text/markdown',
     install_requires=[
-      'pandas>=0.25.0,'
+      'pandas>=0.25.0',
       'requests>2.12.0'
     ],
     packages=find_packages(exclude=('tests', 'docs')),
