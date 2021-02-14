@@ -145,6 +145,8 @@ class SVSeries:
             raise ValueError('End of series has to be in the past!')
         if bounds[0] >= bounds[1]:
             raise ValueError('Start date has to be smaller than end date!')
+        if bounds[1] >= datetime.datetime.now() - datetime.timedelta(days=3):
+            warnings.warn('Queries close to present day might return incomplete results!')
         self.is_consistent = False
         self._bounds = bounds
 

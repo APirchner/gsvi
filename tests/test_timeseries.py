@@ -1,9 +1,10 @@
 """ Tests for the time series structure. """
 
-import pytest
 import unittest
 import datetime
 import math
+
+import pytest
 
 from gsvi.connection import GoogleConnection
 from gsvi.timeseries import SVSeries
@@ -109,6 +110,30 @@ class test_SVMultivariate(unittest.TestCase):
         with self.subTest('result_daily'):
             self.assertEqual(data.shape[0], (end - start).days + 1)
 
+    def test_sv_long_multi(self):
+        """
+        Tests 2 queries for 730 days worldwide.
+        Checks for correct normalization and also if data is really daily.
+        """
+        start = datetime.datetime.now() - datetime.timedelta(days=730)
+        end = datetime.datetime.now() - datetime.timedelta(days=1)
+        queries = [{'key': 'apple', 'geo': ''}, {'key': 'orange', 'geo': ''}]
+        series = SVSeries.multivariate(self.connection, queries, start, end)
+        data = series.get_data(force_truncation=True)
+        with self.subTest('result_warning'):
+            self.assertWarns(UserWarning)
+        with self.subTest('result_normalized'):
+            self.assertTrue(any(data.max() == 100))
+        with self.subTest('result_localized_max'):
+            max_level = list(series.request_structure)[-1]
+            max_query = series.request_structure[max_level]
+            self.assertEqual(len(max_query), 1)
+            max_key = max_query[0]['key']
+            lower, upper = max_query[0]['range']
+            self.assertTrue(data[max_key].max() == 100)
+            self.assertTrue(lower <= data[max_key].idxmax() <= upper)
+
+
     def test_sv_short_month_multi(self):
         """
         Tests 2 queries for 2 months worldwide.
@@ -128,28 +153,7 @@ class test_SVMultivariate(unittest.TestCase):
         with self.subTest('result_monthly'):
             self.assertEqual(data.shape[0], math.ceil((end - start).days / 30))
 
-    def test_sv_long_multi(self):
-        """
-        Tests 2 queries for 2 days worldwide.
-        Checks for correct normalization and also if data is really daily.
-        """
-        start = datetime.datetime(year=2009, month=3, day=17)
-        end = datetime.datetime(year=2019, month=10, day=18)
-        queries = [{'key': 'apple', 'geo': 'US'}, {'key': 'orange', 'geo': 'US'}]
-        series = SVSeries.multivariate(self.connection, queries, start, end)
-        data = series.get_data(force_truncation=True)
-        with self.subTest('result_normalized'):
-            self.assertTrue(any(data.max() == 100))
-        with self.subTest('result_daily'):
-            self.assertEqual(data.shape[0], (end - start).days + 1)
-        with self.subTest('result_localized_max'):
-            max_level = list(series.request_structure)[-1]
-            max_query = series.request_structure[max_level]
-            self.assertEqual(len(max_query), 1)
-            max_key = max_query[0]['key']
-            lower, upper = max_query[0]['range']
-            self.assertTrue(data[max_key].max() == 100)
-            self.assertTrue(lower <= data[max_key].idxmax() <= upper)
+
 
     def test_sv_long_month_multi(self):
         """
