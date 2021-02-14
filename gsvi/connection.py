@@ -52,9 +52,6 @@ class GoogleConnection:
     def __del__(self):
         self.session.close()
 
-    def __repr__(self):
-        return self.session.headers
-
     def __str__(self):
         return json.dumps(self.session.headers, indent=4, sort_keys=True, default=str)
 
@@ -123,18 +120,20 @@ class GoogleConnection:
         response = self._get_request(self.URL_TS[ts_api], params=params)
         content_raw = json.loads(response.content[5:])['default']['timelineData']
 
+        # CAUTION: Daily queries close to the present day sometimes miss ~ 3 days
         if ts_api == 'MULTI':
             # rows iterate faster than columns to get lists of columns
             content_parsed = [
                 pd.Series({datetime.datetime.fromtimestamp(int(row['columnData'][i]['time'])):
                                row['columnData'][i]['value']
-                           for row in content_raw}) for i in range(keyword_num)
+                           for row in content_raw if 'time' in row['columnData'][i]
+                           }) for i in range(keyword_num)
             ]
         else:
             content_parsed = [
                 pd.Series({datetime.datetime.fromtimestamp(int(row['time'])):
                                row['value'][i]
-                           for row in content_raw}) for i in range(keyword_num)
+                           for row in content_raw if 'time' in row}) for i in range(keyword_num)
             ]
         return content_parsed
 
