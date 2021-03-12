@@ -1,6 +1,9 @@
 .. image:: https://travis-ci.com/APirchner/gsvi.svg?branch=master
     :target: https://travis-ci.com/APirchner/gsvi
 
+.. image:: https://img.shields.io/pypi/dm/gsvi
+   :target: https://pypi.python.org/pypi/gsvi
+
 GSVI - Google Search Volume Index
 *********************************
 
